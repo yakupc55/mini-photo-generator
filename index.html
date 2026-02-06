@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mamba VX | Final Build</title>
+    <title>Mamba VX | Neural Engine</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.all.min.js"></script>
     <script type="module">
@@ -16,187 +16,144 @@
             --primary: #00ff88;
             --accent: #00d9ff;
             --bg: #030305;
-            --glass: rgba(18, 18, 22, 0.85);
+            --glass: rgba(18, 18, 22, 0.95);
             --border: rgba(255, 255, 255, 0.08);
         }
 
-        body {
-            background: var(--bg);
-            background-image: 
-                radial-gradient(circle at 10% 10%, rgba(0, 255, 136, 0.03) 0%, transparent 40%),
-                radial-gradient(circle at 90% 90%, rgba(0, 217, 255, 0.03) 0%, transparent 40%);
-            color: #fff;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+        /* Sayfa Geneli & Zoom Engelleme */
+        html, body { 
+            background: var(--bg); 
+            color: #fff; 
+            font-family: 'Segoe UI', sans-serif; 
+            margin: 0; padding: 0; 
+            overflow: hidden; /* Zoom ve kaymayı engellemek için */
+            width: 100%; height: 100%;
+            touch-action: manipulation;
+        }
+
+        /* İlk Açılış Sistemi Yükleme Ekranı */
+        #splash-screen {
+            position: fixed; inset: 0; background: var(--bg);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 1000; transition: opacity 0.5s;
         }
 
         .app-shell {
-            width: 100%;
-            max-width: 1100px;
-            padding: 20px;
-            display: grid;
-            grid-template-columns: 1fr 340px;
-            gap: 25px;
+            width: 100%; max-width: 1100px; padding: 15px;
+            display: grid; grid-template-columns: 1fr 340px; gap: 20px;
+            height: 100vh; box-sizing: border-box; align-items: center;
+            margin: auto;
         }
 
-        @media (max-width: 900px) { .app-shell { grid-template-columns: 1fr; } }
+        @media (max-width: 900px) { 
+            .app-shell { grid-template-columns: 1fr; overflow-y: auto; display: block; } 
+        }
 
         .glass-card {
-            background: var(--glass);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
-            border: 1px solid var(--border);
-            border-radius: 32px;
-            padding: 30px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+            background: var(--glass); backdrop-filter: blur(20px);
+            border: 1px solid var(--border); border-radius: 28px;
+            padding: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            margin-bottom: 20px;
         }
 
         .canvas-container {
-            position: relative;
-            width: 100%;
-            aspect-ratio: 1/1;
-            background: #000;
-            border-radius: 24px;
-            overflow: hidden;
+            position: relative; width: 100%; aspect-ratio: 1/1;
+            background: #000; border-radius: 20px; overflow: hidden;
             border: 1px solid #1a1a1e;
         }
 
         canvas { width: 100%; height: 100%; image-rendering: pixelated; }
 
-        .loader-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.85);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
+        /* Üretim Sırasında Kararma Ekranı */
+        .processing-overlay {
+            position: absolute; inset: 0; background: rgba(0, 0, 0, 0.95);
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 200;
         }
 
-        .progress-box { width: 70%; text-align: center; }
-        .status-text { font-size: 10px; text-transform: uppercase; letter-spacing: 3px; color: var(--primary); font-weight: 800; margin-bottom: 15px; }
-        .bar-container { height: 4px; width: 100%; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; }
-        .bar-fill { height: 100%; width: 0%; background: var(--primary); transition: width 0.3s ease; }
-
+        /* Form Elemanları */
         input {
-            width: 100%;
-            background: rgba(0,0,0,0.4);
-            border: 1px solid var(--border);
-            padding: 18px;
-            border-radius: 18px;
-            color: #fff;
-            font-size: 16px;
-            outline: none;
-            box-sizing: border-box;
-            margin-top: 25px;
+            width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border);
+            padding: 15px; border-radius: 15px; color: #fff; font-size: 16px;
+            margin-top: 20px; box-sizing: border-box; outline: none;
         }
 
-        /* --- BUTON FIX --- */
-        .btn-generate {
-            width: 100%;
-            margin-top: 15px;
-            padding: 18px;
-            border-radius: 18px;
-            border: none;
-            background: var(--primary);
-            color: #000;
-            font-weight: 900;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            position: relative;
-            overflow: hidden;
-            -webkit-tap-highlight-color: transparent; /* Mobil mavi parlamayı kaldırır */
+        .btn-gen {
+            width: 100%; margin-top: 15px; padding: 18px; border-radius: 15px;
+            border: none; background: var(--primary); color: #000;
+            font-weight: 900; text-transform: uppercase; cursor: pointer;
+            transition: 0.3s; pointer-events: auto;
         }
 
-        /* Mobilde ve Masaüstünde Buton Kilidi */
-        .btn-generate:disabled {
-            background: #1a1a1e !important;
-            color: #444 !important;
-            cursor: not-allowed !important;
-            opacity: 1; 
-            pointer-events: none !important; /* Tıklamayı mobilde kesin keser */
-            box-shadow: none !important;
-            transform: scale(1) !important;
+        .btn-gen:disabled {
+            background: #111 !important; color: #444 !important;
+            pointer-events: none !important; cursor: not-allowed;
         }
 
-        .chips-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 8px;
-            max-height: 150px;
-            overflow-y: auto;
-            margin-top: 15px;
+        /* Prompt Çipleri */
+        .chips {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+            gap: 8px; margin-top: 15px; max-height: 120px; overflow-y: auto;
         }
 
         .chip {
-            background: rgba(255,255,255,0.02);
-            border: 1px solid var(--border);
-            padding: 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            color: #888;
-            cursor: pointer;
-            text-align: center;
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+            padding: 8px; border-radius: 10px; font-size: 11px; color: #888;
+            cursor: pointer; text-align: center;
         }
 
-        .stat-card {
-            background: rgba(0,0,0,0.3);
-            border-radius: 18px;
-            padding: 15px;
-            margin-bottom: 10px;
-            border: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
+        .stat-item {
+            background: rgba(0,0,0,0.3); padding: 12px; border-radius: 15px;
+            margin-bottom: 10px; display: flex; justify-content: space-between;
+            font-size: 12px; border: 1px solid var(--border);
         }
+
+        /* Yükleme Çubuğu Animasyonu */
+        .loader-bar { width: 150px; height: 3px; background: #111; border-radius: 2px; margin-top: 15px; overflow: hidden; }
+        .loader-progress { width: 0%; height: 100%; background: var(--primary); transition: width 0.3s; }
     </style>
 </head>
 <body>
+
+<div id="splash-screen">
+    <div style="font-weight: 900; letter-spacing: 5px; color: var(--primary);">MAMBA VX</div>
+    <div style="font-size: 10px; margin-top: 10px; color: #555;">SİSTEM YÜKLENİYOR...</div>
+    <div class="loader-bar"><div id="splash-bar" class="loader-progress"></div></div>
+</div>
 
 <div class="app-shell">
     <div class="glass-card">
         <div class="canvas-container">
             <canvas id="mainCanvas"></canvas>
-            <div id="loader" class="loader-overlay">
-                <div class="progress-box">
-                    <div id="status-txt" class="status-text">MAMBA VX İŞLENİYOR...</div>
-                    <div class="bar-container">
-                        <div id="bar-fill" class="bar-fill"></div>
-                    </div>
-                </div>
+            <div id="proc-overlay" class="processing-overlay">
+                <div style="letter-spacing: 3px; font-size: 12px; font-weight: 800; color: var(--primary);">RESİM İŞLENİYOR</div>
+                <div class="loader-bar"><div id="proc-bar" class="loader-progress"></div></div>
+                <div id="perc-txt" style="font-size: 10px; margin-top: 10px; color: #444;">0%</div>
             </div>
         </div>
 
-        <input type="text" id="promptIn" placeholder="Bir fikir yazın..." autocomplete="off">
-        <button id="genBtn" class="btn-generate" onclick="generate()" disabled>GÖRSELİ ÜRET</button>
+        <input type="text" id="promptIn" placeholder="Bir tema seçin veya yazın..." autocomplete="off">
+        <button id="genBtn" class="btn-gen" onclick="generate()" disabled>BAŞLAT</button>
 
-        <div style="font-size: 11px; color:#444; margin-top: 25px; font-weight: 700;">HIZLI SEÇİMLER</div>
-        <div class="chips-container" id="chipGrid"></div>
+        <div class="chips" id="chipGrid"></div>
     </div>
 
-    <div class="glass-card" style="height: fit-content;">
-        <h3 style="margin:0 0 20px 0; font-size:14px; color:var(--primary); letter-spacing: 2px;">SİSTEM PANELİ</h3>
-        <div class="stat-card"><span>MOTOR</span><span id="st-engine" style="color:var(--accent)">-</span></div>
-        <div class="stat-card"><span>İŞLEME</span><span id="st-time" style="color:var(--accent)">0 ms</span></div>
-        <button onclick="download()" style="width:100%; margin-top:20px; padding:12px; border-radius:12px; background:transparent; border:1px solid #222; color:#555; cursor:pointer; font-size:11px; font-weight:700;">GÖRSELİ İNDİR</button>
+    <div class="glass-card">
+        <h4 style="margin:0 0 15px 0; font-size:12px; letter-spacing:2px; color:var(--accent)">SİSTEM BİLGİSİ</h4>
+        <div class="stat-item"><span>MOTOR</span><span id="st-engine">-</span></div>
+        <div class="stat-item"><span>HIZ</span><span id="st-time">0 ms</span></div>
+        <button onclick="downloadImg()" style="width:100%; padding:12px; border-radius:12px; background:none; border:1px solid #222; color:#555; cursor:pointer; font-weight:700; font-size:11px; margin-top:10px;">💾 GÖRSELİ KAYDET</button>
     </div>
 </div>
 
 <script>
-    const prompts = ["kırmızı araba", "yeşil araba", "sarı araba", "siyah bina", "gri bina", "yeşil bina", "sarı bina", "aslan", "banyo", "oğlan", "cami", "köpek", "dondurma", "eyfel kulesi", "balık", "kız", "karınca", "kedi", "mutfak", "adam", "dağ", "oturma odası", "uzay", "kalabalık cadde", "kadın", "dünya"];
+    const promptList = ["kırmızı araba", "yeşil araba", "sarı araba", "siyah bina", "gri bina", "yeşil bina", "sarı bina", "aslan", "banyo", "oğlan", "cami", "köpek", "dondurma", "eyfel kulesi", "balık", "kız", "karınca", "kedi", "mutfak", "adam", "dağ", "oturma odası", "uzay", "kalabalık cadde", "kadın", "dünya"];
 
     let sess, wordToId, embTable, imgDim, embSize, ctx, rawImg;
 
+    // Prompt Grid
     const grid = document.getElementById('chipGrid');
-    prompts.forEach(p => {
+    promptList.forEach(p => {
         const d = document.createElement('div');
         d.className = 'chip'; d.innerText = p;
         d.onclick = () => document.getElementById('promptIn').value = p;
@@ -206,35 +163,46 @@
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/';
 
     window.onload = async () => {
-        const res = await fetch('main.mambax');
-        const buf = await res.arrayBuffer();
-        const dv = new DataView(buf);
-        imgDim = dv.getUint32(8, true);
-        embSize = dv.getUint32(12, true);
-        const jL = dv.getUint32(16, true);
-        wordToId = JSON.parse(new TextDecoder().decode(buf.slice(20, 20 + jL)));
-        let off = 20 + jL;
-        const eL = dv.getUint32(off, true);
-        const eComp = new Uint8Array(buf.slice(off+4, off+4+eL));
-        const oComp = new Uint8Array(buf.slice(off+4+eL));
+        const sBar = document.getElementById('splash-bar');
+        try {
+            const res = await fetch('main.mambax');
+            sBar.style.width = '30%';
+            const buf = await res.arrayBuffer();
+            const dv = new DataView(buf);
+            
+            imgDim = dv.getUint32(8, true);
+            embSize = dv.getUint32(12, true);
+            const jL = dv.getUint32(16, true);
+            wordToId = JSON.parse(new TextDecoder().decode(buf.slice(20, 20 + jL)));
+            
+            let off = 20 + jL;
+            const eL = dv.getUint32(off, true);
+            const eComp = new Uint8Array(buf.slice(off+4, off+4+eL));
+            const oComp = new Uint8Array(buf.slice(off+4+eL));
 
-        fflate.decompress(eComp, (err, d1) => {
-            embTable = new Float32Array(d1.buffer);
-            fflate.decompress(oComp, async (err, d2) => {
-                window.modelData = d2;
-                await initModel();
-                setupCanvas();
+            fflate.decompress(eComp, (err, d1) => {
+                embTable = new Float32Array(d1.buffer);
+                sBar.style.width = '60%';
+                fflate.decompress(oComp, async (err, d2) => {
+                    window.modelData = d2;
+                    await initEngine();
+                    setupCanvas();
+                    sBar.style.width = '100%';
+                    setTimeout(() => {
+                        document.getElementById('splash-screen').style.opacity = '0';
+                        setTimeout(() => document.getElementById('splash-screen').remove(), 500);
+                    }, 300);
+                });
             });
-        });
+        } catch(e) { alert("Sistem yüklenemedi!"); }
     };
 
-    async function initModel() {
+    async function initEngine() {
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const mode = isMobile ? 'wasm' : 'webgpu';
         try {
             sess = await ort.InferenceSession.create(window.modelData, { 
-                executionProviders: [mode],
-                intraOpNumThreads: 4 
+                executionProviders: [mode], intraOpNumThreads: 4 
             });
             document.getElementById('st-engine').innerText = mode.toUpperCase();
         } catch(e) {
@@ -253,28 +221,31 @@
 
     async function generate() {
         const btn = document.getElementById('genBtn');
-        const loader = document.getElementById('loader');
-        const bar = document.getElementById('bar-fill');
+        const overlay = document.getElementById('proc-overlay');
+        const bar = document.getElementById('proc-bar');
+        const perc = document.getElementById('perc-txt');
         
-        // --- KİLİT MEKANİZMASI ---
+        // --- HEMEN KİLİTLE VE EKRANI KARART ---
         btn.disabled = true;
-        btn.innerText = "İŞLENİYOR...";
-        loader.style.display = 'flex';
-        
-        const promptStr = document.getElementById('promptIn').value;
-        const prompt = promptStr.toLocaleLowerCase('tr-TR').split(/\s+/);
+        overlay.style.display = 'flex';
+        bar.style.width = '10%';
+        perc.innerText = "10%";
+
+        const prompt = document.getElementById('promptIn').value.toLocaleLowerCase('tr-TR').split(/\s+/);
         const input = new Float32Array(32 * embSize);
         for(let i=0; i<32; i++) {
             const id = wordToId[prompt[i] || "<|pad|>"] || 0;
             input.set(embTable.subarray(id * embSize, (id * embSize) + embSize), i * embSize);
         }
 
-        bar.style.width = '30%';
+        bar.style.width = '40%';
+        perc.innerText = "40%";
         const t0 = performance.now();
 
         try {
             const res = await sess.run({ input: new ort.Tensor('float32', input, [1, 32, embSize]) });
             bar.style.width = '80%';
+            perc.innerText = "80%";
             
             const out = await res.output.getData(); 
             const pix = rawImg.data;
@@ -287,20 +258,20 @@
                 pix[p++] = 255;
             }
             ctx.putImageData(rawImg, 0, 0);
-            document.getElementById('st-time').innerText = Math.round(performance.now() - t0) + " ms";
             bar.style.width = '100%';
+            perc.innerText = "100%";
+            document.getElementById('st-time').innerText = Math.round(performance.now() - t0) + " ms";
         } catch(e) { console.error(e); }
 
         setTimeout(() => { 
-            loader.style.display = 'none'; 
+            overlay.style.display = 'none'; 
             btn.disabled = false;
-            btn.innerText = "GÖRSELİ ÜRET";
-        }, 500);
+        }, 400);
     }
 
-    function download() {
+    function downloadImg() {
         const a = document.createElement('a');
-        a.download = 'mamba_render.png';
+        a.download = 'mamba.png';
         a.href = document.getElementById('mainCanvas').toDataURL();
         a.click();
     }
