@@ -1,4 +1,4 @@
-# 🐍 Mamba VX | Neural Vision
+# 🐍 Mamba | Neural Vision
 
 Sadece **1MB** boyutunda, tarayıcı tabanlı, ultra hafif bir yapay zeka görsel üretim motoru. Hiçbir sunucuya ihtiyaç duymadan, tamamen cihazınızın gücüyle (Edge AI) çalışır.
 
