@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mamba VX | Neural Vision Pro</title>
+    <title>Mamba VX | Neural Engine</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.all.min.js"></script>
     <script type="module">
@@ -14,369 +14,334 @@
     <style>
         :root {
             --primary: #00ff88;
-            --secondary: #007bff;
             --bg: #050507;
-            --card-bg: rgba(20, 20, 25, 0.9);
-            --border: rgba(255, 255, 255, 0.1);
-            --text: #ffffff;
+            --card: rgba(25, 25, 30, 0.95);
+            --accent: #007bff;
         }
 
         body {
             background: var(--bg);
-            background-image: radial-gradient(circle at 50% 50%, #101018 0%, #050507 100%);
-            color: var(--text);
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: white;
+            font-family: 'Inter', system-ui, sans-serif;
             margin: 0;
-            padding: 0;
             display: flex;
             justify-content: center;
             min-height: 100vh;
-            overflow-x: hidden;
         }
 
-        .app-shell {
+        .app-container {
             width: 100%;
-            max-width: 1100px;
-            padding: 30px 15px;
+            max-width: 1000px;
+            padding: 20px;
             display: grid;
-            grid-template-columns: 1fr 350px;
-            gap: 25px;
+            grid-template-columns: 1fr 320px;
+            gap: 20px;
         }
 
-        @media (max-width: 900px) {
-            .app-shell { grid-template-columns: 1fr; }
-        }
+        @media (max-width: 850px) { .app-container { grid-template-columns: 1fr; } }
 
-        .glass-card {
-            background: var(--card-bg);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            border: 1px solid var(--border);
-            border-radius: 24px;
+        .glass-panel {
+            background: var(--card);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 28px;
             padding: 25px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
         }
 
-        /* Başlıklar */
-        h1 { font-size: 24px; margin: 0 0 5px 0; letter-spacing: 1px; }
-        .subtitle { color: #888; font-size: 13px; margin-bottom: 20px; }
-
-        /* Motor Seçimi */
-        .engine-tabs {
-            display: flex;
-            background: rgba(0,0,0,0.5);
-            padding: 5px;
-            border-radius: 14px;
-            margin-bottom: 20px;
-            border: 1px solid var(--border);
-        }
-
-        .tab {
-            flex: 1;
-            padding: 12px;
-            text-align: center;
-            font-size: 12px;
-            font-weight: 800;
-            cursor: pointer;
-            border-radius: 10px;
-            transition: 0.3s;
-            color: #666;
-        }
-
-        .tab.active {
-            background: var(--primary);
-            color: #000;
-            box-shadow: 0 0 15px rgba(0,255,136,0.3);
-        }
-
-        /* Görsel Alanı */
-        .viewport {
+        /* Görsel ve Yükleme Alanı */
+        .canvas-wrapper {
             position: relative;
             width: 100%;
             aspect-ratio: 1/1;
             background: #000;
-            border-radius: 18px;
+            border-radius: 20px;
             overflow: hidden;
-            border: 1px solid #333;
-            cursor: zoom-in;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            border: 2px solid #1a1a1a;
         }
 
-        canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+        canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
 
-        /* Giriş ve Buton */
-        .controls { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
-        
+        /* Progress Bar (İlerleme Çubuğu) */
+        .progress-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .bar-container {
+            width: 70%;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+
+        .bar-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--primary));
+            transition: width 0.3s ease;
+            box-shadow: 0 0 15px var(--primary);
+        }
+
+        /* Form Elemanları */
+        .input-box {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
         input {
-            background: rgba(0,0,0,0.5);
-            border: 1px solid var(--border);
+            background: #000;
+            border: 1px solid #333;
             padding: 16px;
-            border-radius: 14px;
-            color: #fff;
+            border-radius: 15px;
+            color: white;
             font-size: 16px;
             outline: none;
         }
 
         input:focus { border-color: var(--primary); }
 
-        .btn-main {
-            background: var(--secondary);
+        .gen-btn {
+            background: var(--accent);
             color: white;
             border: none;
-            padding: 16px;
-            border-radius: 14px;
-            font-size: 15px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: 0.2s;
-            text-transform: uppercase;
-        }
-
-        .btn-main:hover { filter: brightness(1.2); transform: translateY(-1px); }
-        .btn-main:disabled { opacity: 0.3; cursor: not-allowed; }
-
-        /* İstatistikler */
-        .stats-list { display: grid; gap: 10px; }
-        .stat-item {
-            background: rgba(255,255,255,0.03);
-            padding: 15px;
+            padding: 18px;
             border-radius: 15px;
-            border: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: 0.3s;
+            letter-spacing: 1px;
         }
-        .stat-val { color: var(--primary); font-family: monospace; font-weight: bold; }
 
-        /* Modal (Pencere) */
+        .gen-btn:disabled { opacity: 0.4; cursor: wait; }
+
+        /* Tab Sistemi */
+        .tabs {
+            display: flex;
+            background: #000;
+            padding: 5px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 8px;
+            color: #555;
+        }
+
+        .tab.active { background: #222; color: var(--primary); font-weight: bold; }
+
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.96);
-            z-index: 10000;
-            align-items: center;
-            justify-content: center;
+            top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.97);
+            z-index: 999;
+            align-items: center; justify-content: center;
         }
+        .modal img { max-width: 90%; max-height: 80%; border-radius: 10px; border: 1px solid #333; }
+        .close-btn { position: absolute; top: 20px; right: 20px; font-size: 30px; cursor: pointer; color: #ff4444; }
 
-        .modal-content {
-            position: relative;
-            max-width: 95vw;
-            max-height: 85vh;
-        }
-
-        .modal-content img {
-            width: 100%;
-            height: auto;
-            border-radius: 12px;
-            border: 1px solid #444;
-            box-shadow: 0 0 30px var(--primary);
-        }
-
-        .close-btn {
-            position: absolute;
-            top: -50px;
-            right: 0;
-            background: #ff4444;
-            color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 20px;
-            font-weight: bold;
-        }
-
-        #loading-txt {
-            position: absolute;
-            color: var(--primary);
-            font-weight: bold;
-            font-size: 14px;
-        }
+        #status-txt { font-size: 14px; font-weight: bold; color: var(--primary); }
     </style>
 </head>
 <body>
 
-<div class="app-shell">
-    <div class="glass-card">
-        <h1>MAMBA VX ENGINE</h1>
-        <p class="subtitle">AI Görsel Üretim Sistemi v4.0</p>
-
-        <div class="engine-tabs">
-            <div id="tab-webgpu" class="tab active" onclick="switchEngine('webgpu')">GPU TURBO</div>
-            <div id="tab-wasm" class="tab" onclick="switchEngine('wasm')">CPU MULTI-THREAD</div>
+<div class="app-container">
+    <div class="glass-panel">
+        <div class="tabs">
+            <div id="tab-webgpu" class="tab active" onclick="switchEngine('webgpu')">GPU (Turbo)</div>
+            <div id="tab-wasm" class="tab" onclick="switchEngine('wasm')">CPU (Multi-Thread)</div>
         </div>
 
-        <div class="viewport" onclick="openModal()">
-            <canvas id="mainCanvas"></canvas>
-            <div id="loading-txt">SİSTEM BAŞLATILIYOR...</div>
+        <div class="canvas-wrapper">
+            <canvas id="mainCanvas" onclick="openModal()"></canvas>
+            
+            <div id="progressZone" class="progress-overlay">
+                <span id="status-txt">BAŞLATILIYOR...</span>
+                <div class="bar-container">
+                    <div id="barFill" class="bar-fill"></div>
+                </div>
+                <span id="perc-txt" style="margin-top:10px; font-size:12px; color:#888;">0%</span>
+            </div>
         </div>
 
-        <div class="controls">
-            <input type="text" id="promptIn" placeholder="Bir fikir yazın (örn: neon cat)..." autocomplete="off">
-            <button id="genBtn" class="btn-main" onclick="generate()" disabled>GÖRSELİ ÜRET</button>
+        <div class="input-box">
+            <input type="text" id="promptIn" placeholder="Bir şey hayal et (örn: futuristic city)..." autocomplete="off">
+            <button id="genBtn" class="gen-btn" onclick="generate()" disabled>ÜRETİMİ BAŞLAT</button>
         </div>
     </div>
 
     <div class="side-panel">
-        <div class="glass-card">
-            <h3 style="margin-top:0">DONANIM DURUMU</h3>
-            <div class="stats-list">
-                <div class="stat-item"><span>Aktif Motor</span><span class="stat-val" id="st-engine">-</span></div>
-                <div class="stat-item"><span>Hesaplama</span><span class="stat-val" id="st-time">0 MS</span></div>
-                <div class="stat-item"><span>CPU Çekirdek</span><span class="stat-val" id="st-threads">-</span></div>
-                <div class="stat-item"><span>Çözünürlük</span><span class="stat-val" id="st-res">0x0</span></div>
+        <div class="glass-panel">
+            <h4 style="margin:0 0 15px 0">SİSTEM BİLGİSİ</h4>
+            <div style="font-size:13px; color:#888;">
+                <p>Motor: <span id="st-engine" style="color:var(--primary)">-</span></p>
+                <p>Süre: <span id="st-time" style="color:var(--primary)">0 ms</span></p>
+                <p>Cihaz Çekirdek: <span id="st-cores" style="color:var(--primary)">-</span></p>
             </div>
-            
-            <button class="btn-main" style="width:100%; margin-top:20px; background:#1a1a1e; border:1px solid #444;" onclick="downloadImage()">💾 PNG OLARAK KAYDET</button>
-            
-            <p style="font-size:11px; color:#555; margin-top:20px; line-height:1.5;">
-                <b>İPUCU:</b> Girişler otomatik olarak küçük harfe çevrilir. Mobil cihazlarda gri ekran sorunu için CPU moduna geçebilirsiniz.
-            </p>
+            <button onclick="downloadImg()" style="width:100%; background:#111; color:#fff; border:1px solid #333; padding:12px; border-radius:10px; cursor:pointer;">💾 PNG İndir</button>
         </div>
     </div>
 </div>
 
-<div id="imgModal" class="modal" onclick="closeModal()">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <div class="close-btn" onclick="closeModal()">&times;</div>
-        <img id="modalImg" src="">
-    </div>
+<div id="imgModal" class="modal">
+    <span class="close-btn" onclick="closeModal()">&times;</span>
+    <img id="modalImg" src="">
 </div>
 
 <script>
-    let sess, wordToId, embTable, imgDim, embSize, ctx, rawImg;
-    let currentEngine = 'webgpu';
-    const MAX_LEN = 32;
+    let session, words, embeddings, imgSize, dim, ctx, imgData;
+    let currentMode = 'webgpu';
+    const MAX_S = 32;
 
-    // WebAssembly & Multi-thread Ayarları
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/';
     ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
 
     window.onload = async () => {
-        document.getElementById('st-threads').innerText = ort.env.wasm.numThreads;
+        document.getElementById('st-cores').innerText = navigator.hardwareConcurrency;
         try {
             const res = await fetch('main.mambax');
-            if(!res.ok) throw new Error();
             const blob = await res.blob();
             const buf = await blob.arrayBuffer();
             const dv = new DataView(buf);
             
-            imgDim = dv.getUint32(8, true);
-            embSize = dv.getUint32(12, true);
+            imgSize = dv.getUint32(8, true);
+            dim = dv.getUint32(12, true);
             const jL = dv.getUint32(16, true);
-            wordToId = JSON.parse(new TextDecoder().decode(buf.slice(20, 20 + jL)));
+            words = JSON.parse(new TextDecoder().decode(buf.slice(20, 20 + jL)));
             
             let off = 20 + jL;
             const eL = dv.getUint32(off, true);
-            const eComp = new Uint8Array(buf.slice(off+4, off+4+eL));
-            const oComp = new Uint8Array(buf.slice(off+4+eL));
+            const eC = new Uint8Array(buf.slice(off+4, off+4+eL));
+            const oC = new Uint8Array(buf.slice(off+4+eL));
 
-            fflate.decompress(eComp, (err, d1) => {
-                embTable = new Float32Array(d1.buffer);
-                fflate.decompress(oComp, async (err, d2) => {
-                    window.onnxBuffer = d2;
-                    await initEngine(currentEngine);
-                    setupCanvas();
+            fflate.decompress(eC, (err, d1) => {
+                embeddings = new Float32Array(d1.buffer);
+                fflate.decompress(oC, async (err, d2) => {
+                    window.modelBuffer = d2;
+                    await initSession(currentMode);
+                    initUI();
                 });
             });
-        } catch(e) { document.getElementById('loading-txt').innerText = "MODEL DOSYASI EKSİK!"; }
+        } catch(e) { alert("Model dosyası eksik!"); }
     };
 
-    async function initEngine(mode) {
+    async function initSession(mode) {
         document.getElementById('genBtn').disabled = true;
-        document.getElementById('st-engine').innerText = "YÜKLENİYOR...";
         try {
-            const opts = mode === 'webgpu' ? 
-                { executionProviders: ['webgpu'] } : 
-                { executionProviders: ['wasm'], intraOpNumThreads: ort.env.wasm.numThreads, executionMode: 'parallel' };
+            const opts = mode === 'webgpu' ? { executionProviders: ['webgpu'] } : 
+                         { executionProviders: ['wasm'], intraOpNumThreads: ort.env.wasm.numThreads, executionMode: 'parallel' };
             
-            sess = await ort.InferenceSession.create(window.onnxBuffer, opts);
-            currentEngine = mode;
+            session = await ort.InferenceSession.create(window.modelBuffer, opts);
+            currentMode = mode;
             document.getElementById('st-engine').innerText = mode.toUpperCase();
             document.getElementById('genBtn').disabled = false;
-            document.getElementById('loading-txt').style.display = 'none';
-        } catch(e) {
-            if(mode === 'webgpu') {
-                console.warn("WebGPU başarısız, CPU'ya geçiliyor...");
-                switchEngine('wasm');
-            }
-        }
+        } catch(e) { if(mode === 'webgpu') switchEngine('wasm'); }
     }
 
     function switchEngine(mode) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        const targetTab = document.getElementById('tab-' + mode);
-        if(targetTab) targetTab.classList.add('active');
-        initEngine(mode);
+        document.getElementById('tab-' + mode).classList.add('active');
+        initSession(mode);
     }
 
-    function setupCanvas() {
+    function initUI() {
         const c = document.getElementById('mainCanvas');
-        c.width = c.height = imgDim;
-        ctx = c.getContext('2d', { alpha: false });
-        rawImg = ctx.createImageData(imgDim, imgDim);
-        document.getElementById('st-res').innerText = imgDim + "x" + imgDim;
+        c.width = c.height = imgSize;
+        ctx = c.getContext('2d', { alpha: false, desynchronized: true });
+        imgData = ctx.createImageData(imgSize, imgSize);
     }
 
     async function generate() {
-        const btn = document.getElementById('genBtn');
-        btn.innerText = "HESAPLANIYOR...";
-        btn.disabled = true;
-
-        // Otomatik Küçük Harf Normalizasyonu (Türkçe karakter desteğiyle)
         const prompt = document.getElementById('promptIn').value.toLocaleLowerCase('tr-TR').split(/\s+/);
-        const input = new Float32Array(MAX_LEN * embSize);
+        const overlay = document.getElementById('progressZone');
+        const bar = document.getElementById('barFill');
+        const perc = document.getElementById('perc-txt');
+        const status = document.getElementById('status-txt');
+
+        overlay.style.display = 'flex';
+        bar.style.width = '0%';
         
-        for(let i=0; i<MAX_LEN; i++) {
-            const id = wordToId[prompt[i] || "<|pad|>"] || 0;
-            input.set(embTable.subarray(id * embSize, (id * embSize) + embSize), i * embSize);
+        // Adım 1: Veri Hazırlama
+        status.innerText = "VERİLER İŞLENİYOR...";
+        updateProgress(20);
+        
+        const input = new Float32Array(MAX_S * dim);
+        for(let i=0; i<MAX_S; i++) {
+            const id = words[prompt[i] || "<|pad|>"] || 0;
+            input.set(embeddings.subarray(id * dim, (id * dim) + dim), i * dim);
         }
 
+        // Adım 2: Hesaplama (GPU/CPU)
+        status.innerText = "SİNİR AĞI ÇALIŞIYOR...";
+        updateProgress(50);
+        
         const t0 = performance.now();
         try {
-            const res = await sess.run({ input: new ort.Tensor('float32', input, [1, MAX_LEN, embSize]) });
+            const feeds = { input: new ort.Tensor('float32', input, [1, MAX_S, dim]) };
+            const results = await session.run(feeds);
             
-            // Gri Ekran Fix: Mobil cihazlarda asenkron veri bekleme
-            const out = await res.output.getData(); 
+            // GRİ EKRAN FIX: Belleği zorla senkronize et (özellikle mobil GPU için)
+            status.innerText = "BELLEK SENKRONİZE EDİLİYOR...";
+            updateProgress(80);
             
-            const pix = rawImg.data;
-            const area = imgDim * imgDim;
+            const output = await results.output.getData(); 
+
+            // Adım 3: Piksel Dönüştürme
+            status.innerText = "GÖRSEL OLUŞTURULUYOR...";
+            const pix = imgData.data;
+            const area = imgSize * imgSize;
             let r=0, g=area, b=area*2, p=0;
             for(let i=0; i<area; i++) {
-                pix[p++] = (out[r++] + 1) * 127.5;
-                pix[p++] = (out[g++] + 1) * 127.5;
-                pix[p++] = (out[b++] + 1) * 127.5;
+                pix[p++] = (output[r++] + 1) * 127.5;
+                pix[p++] = (output[g++] + 1) * 127.5;
+                pix[p++] = (output[b++] + 1) * 127.5;
                 pix[p++] = 255;
             }
-            ctx.putImageData(rawImg, 0, 0);
-            document.getElementById('st-time').innerText = Math.round(performance.now() - t0) + " MS";
-        } catch(e) { alert("Hata: " + e.message); }
-        
-        btn.innerText = "GÖRSELİ ÜRET";
-        btn.disabled = false;
+            
+            ctx.putImageData(imgData, 0, 0);
+            updateProgress(100);
+            document.getElementById('st-time').innerText = Math.round(performance.now() - t0) + " ms";
+            
+            setTimeout(() => overlay.style.display = 'none', 500);
+        } catch(e) { 
+            alert("Hata oluştu, CPU moduna geçiliyor."); 
+            overlay.style.display = 'none';
+            switchEngine('wasm');
+        }
+
+        function updateProgress(p) {
+            bar.style.width = p + '%';
+            perc.innerText = p + '%';
+        }
     }
 
-    // Modal Fonksiyonları
     function openModal() {
-        const modal = document.getElementById('imgModal');
-        const mImg = document.getElementById('modalImg');
-        mImg.src = document.getElementById('mainCanvas').toDataURL();
-        modal.style.display = 'flex';
+        const m = document.getElementById('imgModal');
+        document.getElementById('modalImg').src = document.getElementById('mainCanvas').toDataURL();
+        m.style.display = 'flex';
     }
-
-    function closeModal() {
-        document.getElementById('imgModal').style.display = 'none';
-    }
-
-    function downloadImage() {
+    function closeModal() { document.getElementById('imgModal').style.display = 'none'; }
+    function downloadImg() {
         const a = document.createElement('a');
-        a.download = `mamba_${Date.now()}.png`;
+        a.download = 'mamba_render.png';
         a.href = document.getElementById('mainCanvas').toDataURL();
         a.click();
     }
