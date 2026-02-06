@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mamba VX Pro | AI Engine</title>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.all.min.js"></script>
+    <script type="module">
+        import * as fflate from 'https://cdn.skypack.dev/fflate?min';
+        window.fflate = fflate;
+    </script>
+    <style>
+        :root { --accent: #00ff88; --bg: #0a0a0c; --card: #141417; --text: #e0e0e0; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; margin: 0; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 20px; }
+        
+        .app-container { width: 100%; max-width: 900px; display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+        @media (max-width: 768px) { .app-container { grid-template-columns: 1fr; } }
+
+        .main-panel { background: var(--card); padding: 25px; border-radius: 20px; border: 1px solid #2a2a2e; }
+        .side-panel { background: var(--card); padding: 20px; border-radius: 20px; border: 1px solid #2a2a2e; font-size: 13px; }
+
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; margin-bottom: 10px; border: 1px solid #333; }
+        .active-gpu { color: var(--accent); border-color: var(--accent); }
+
+        .canvas-wrapper { position: relative; margin-top: 20px; background: #000; border-radius: 12px; overflow: hidden; cursor: zoom-in; transition: transform 0.2s; }
+        .canvas-wrapper:active { transform: scale(1.5); z-index: 100; cursor: zoom-out; }
+        canvas { width: 100%; display: block; image-rendering: pixelated; }
+
+        .input-group { display: flex; gap: 10px; margin-top: 20px; }
+        input { flex: 1; background: #050505; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 10px; outline: none; transition: 0.3s; }
+        input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(0,255,136,0.1); }
+        
+        button { background: #007bff; color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover { background: #0056b3; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-download { background: #222; border: 1px solid #444; margin-top: 10px; width: 100%; }
+
+        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; }
+        .stat-val { color: var(--accent); font-family: monospace; }
+        h3 { margin-top: 0; color: #fff; font-size: 16px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .loader { color: #888; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="main-panel">
+        <div id="engine-badge" class="status-badge">SİSTEM BAŞLATILIYOR...</div>
+        
+        <div class="canvas-wrapper" id="zoomWrapper" title="Büyütmek için basılı tutun">
+            <canvas id="mainCanvas"></canvas>
+        </div>
+
+        <div class="input-group">
+            <input type="text" id="promptInput" placeholder="Hayalinizdeki görseli yazın..." autocomplete="off">
+            <button id="genBtn" onclick="generate()" disabled>ÜRET</button>
+        </div>
+        <button class="btn-download" onclick="downloadImage()">⬇ Görseli İndir (.png)</button>
+    </div>
+
+    <div class="side-panel">
+        <h3>📊 Sistem Bilgileri</h3>
+        <div class="stat-row"><span>Donanım Hızlandırma</span><span class="stat-val" id="st-gpu">-</span></div>
+        <div class="stat-row"><span>Aktif Çekirdek Sayısı</span><span class="stat-val" id="st-threads">-</span></div>
+        <div class="stat-row"><span>Bellek İzolasyonu</span><span class="stat-val" id="st-iso">-</span></div>
+        <div class="stat-row"><span>Model Durumu</span><span class="stat-val" id="st-model">Aranıyor...</span></div>
+        
+        <h3 style="margin-top:25px;">⚡ Performans</h3>
+        <div class="stat-row"><span>Inference Süresi</span><span class="stat-val" id="st-time">0 ms</span></div>
+        <div class="stat-row"><span>Çözünürlük</span><span class="stat-val" id="st-res">0x0</span></div>
+
+        <div id="model-info-text" style="margin-top:20px; color:#888; line-height:1.4;">
+            GitHub Pages üzerinden WebGPU desteği ile çalışıyor. 
+            Mobil cihazlarda otomatik olarak Çoklu Çekirdek WASM moduna geçer.
+        </div>
+    </div>
+</div>
+
+<script>
+    let sess, wordToId, embTable, imgDim, embSize, ctx, rawImg;
+    const MAX_LEN = 32;
+
+    // Ortam Ayarları
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/';
+    ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
+
+    // Sayfa açıldığında otomatik main.mambax ara
+    window.onload = async () => {
+        updateStats();
+        try {
+            const response = await fetch('main.mambax');
+            if (!response.ok) throw new Error("main.mambax bulunamadı.");
+            const blob = await response.blob();
+            await processMambaFile(blob);
+        } catch (e) {
+            document.getElementById('st-model').innerText = "Bulunamadı";
+            document.getElementById('st-model').style.color = "#ff4444";
+            alert("Otomatik yükleme hatası: Ana dizinde 'main.mambax' bulunamadı. Lütfen dosyayı GitHub'a yüklediğinizden emin olun.");
+        }
+    };
+
+    function updateStats() {
+        document.getElementById('st-threads').innerText = navigator.hardwareConcurrency || 'Bilinmiyor';
+        document.getElementById('st-iso').innerText = window.crossOriginIsolated ? "Aktif" : "Pasif";
+    }
+
+    async function processMambaFile(file) {
+        document.getElementById('st-model').innerText = "Yükleniyor...";
+        const buffer = await file.arrayBuffer();
+        const dv = new DataView(buffer);
+        
+        imgDim = dv.getUint32(8, true);
+        embSize = dv.getUint32(12, true);
+        const jLen = dv.getUint32(16, true);
+        wordToId = JSON.parse(new TextDecoder().decode(buffer.slice(20, 20 + jLen)));
+        
+        let offset = 20 + jLen;
+        const eLen = dv.getUint32(offset, true);
+        const eComp = new Uint8Array(buffer.slice(offset + 4, offset + 4 + eLen));
+        const oComp = new Uint8Array(buffer.slice(offset + 4 + eLen));
+
+        fflate.decompress(eComp, (err, d1) => {
+            embTable = new Float32Array(d1.buffer);
+            fflate.decompress(oComp, async (err, d2) => {
+                try {
+                    // WebGPU Denemesi
+                    try {
+                        sess = await ort.InferenceSession.create(d2, { executionProviders: ['webgpu'] });
+                        setEngineUI("WEBGPU AKTİF", true);
+                    } catch (e) {
+                        sess = await ort.InferenceSession.create(d2, { 
+                            executionProviders: ['wasm'], 
+                            intraOpNumThreads: ort.env.wasm.numThreads 
+                        });
+                        setEngineUI("WASM (CPU) AKTİF", false);
+                    }
+                    initCanvas();
+                } catch (ex) { alert("Model başlatılamadı: " + ex); }
+            });
+        });
+    }
+
+    function setEngineUI(text, isGpu) {
+        const b = document.getElementById('engine-badge');
+        b.innerText = text;
+        if (isGpu) b.classList.add('active-gpu');
+        document.getElementById('st-gpu').innerText = isGpu ? "WebGPU" : "WASM (Software)";
+        document.getElementById('st-model').innerText = "Hazır";
+        document.getElementById('genBtn').disabled = false;
+    }
+
+    function initCanvas() {
+        const c = document.getElementById('mainCanvas');
+        c.width = c.height = imgDim;
+        ctx = c.getContext('2d', { alpha: false });
+        rawImg = ctx.createImageData(imgDim, imgDim);
+        document.getElementById('st-res').innerText = `${imgDim}x${imgDim}`;
+    }
+
+    async function generate() {
+        const btn = document.getElementById('genBtn');
+        btn.innerText = "ÜRETİLİYOR...";
+        btn.disabled = true;
+        
+        const words = document.getElementById('promptInput').value.toLowerCase().split(/\s+/);
+        const inputData = new Float32Array(MAX_LEN * embSize);
+        for(let i=0; i<MAX_LEN; i++) {
+            const id = wordToId[words[i] || "<|pad|>"] || 0;
+            inputData.set(embTable.subarray(id * embSize, (id * embSize) + embSize), i * embSize);
+        }
+
+        const t0 = performance.now();
+        const results = await sess.run({ input: new ort.Tensor('float32', inputData, [1, MAX_LEN, embSize]) });
+        const output = await results.output.getData();
+        const t1 = performance.now();
+
+        const pixels = rawImg.data;
+        const area = imgDim * imgDim;
+        let r=0, g=area, b=area*2, p=0;
+        for(let i=0; i<area; i++) {
+            pixels[p++] = (output[r++] + 1) * 127.5;
+            pixels[p++] = (output[g++] + 1) * 127.5;
+            pixels[p++] = (output[b++] + 1) * 127.5;
+            pixels[p++] = 255;
+        }
+        ctx.putImageData(rawImg, 0, 0);
+        document.getElementById('st-time').innerText = `${Math.round(t1 - t0)} ms`;
+        btn.innerText = "ÜRET";
+        btn.disabled = false;
+    }
+
+    function downloadImage() {
+        const link = document.createElement('a');
+        link.download = 'mamba-vision-output.png';
+        link.href = document.getElementById('mainCanvas').toDataURL();
+        link.click();
+    }
+</script>
+</body>
+</html>
