@@ -3,196 +3,243 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mamba VX Pro | AI Generator</title>
+    <title>Mamba VX | Ultimate AI Engine</title>
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.all.min.js"></script>
     <script type="module">
         import * as fflate from 'https://cdn.skypack.dev/fflate?min';
         window.fflate = fflate;
     </script>
     <style>
-        :root { --accent: #00ff88; --bg: #0d0d0f; --card: #16161a; --text: #f0f0f0; }
-        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        :root { --accent: #00ff88; --bg: #0a0a0c; --card: #141417; --text: #e0e0e0; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, -apple-system, sans-serif; margin: 0; padding: 10px; display: flex; justify-content: center; min-height: 100vh; }
         
-        .container { width: 100%; max-width: 1000px; display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
-        @media (max-width: 850px) { .container { grid-template-columns: 1fr; } }
+        .container { width: 100%; max-width: 1100px; display: grid; grid-template-columns: 1fr 350px; gap: 15px; }
+        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
 
-        .main-card { background: var(--card); border-radius: 24px; padding: 25px; border: 1px solid #2a2a2e; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
-        .side-card { background: var(--card); border-radius: 24px; padding: 25px; border: 1px solid #2a2a2e; align-self: start; }
+        .main-card, .side-card { background: var(--card); border-radius: 20px; padding: 20px; border: 1px solid #2a2a2e; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
 
-        /* Canvas & Zoom */
-        .preview-container { position: relative; width: 100%; background: #000; border-radius: 16px; overflow: hidden; margin-bottom: 20px; cursor: zoom-in; }
-        .preview-container:active { cursor: zoom-out; }
-        .preview-container:active canvas { transform: scale(1.8); }
-        canvas { width: 100%; display: block; image-rendering: pixelated; transition: transform 0.3s ease; transform-origin: center; }
+        /* Resim Önizleme */
+        .preview-box { background: #000; border-radius: 12px; overflow: hidden; position: relative; margin-bottom: 15px; aspect-ratio: 1/1; cursor: zoom-in; display: flex; align-items: center; justify-content: center; border: 1px solid #333; transition: 0.3s; }
+        .preview-box:hover { border-color: var(--accent); }
+        canvas { width: 100%; height: 100%; image-rendering: pixelated; }
 
-        /* Inputs */
-        .input-box { display: flex; gap: 10px; margin-bottom: 15px; }
-        input { flex: 1; background: #000; border: 1px solid #3a3a3e; color: #fff; padding: 14px; border-radius: 12px; outline: none; font-size: 16px; }
+        /* Kontrol Paneli */
+        .controls { display: flex; flex-direction: column; gap: 10px; }
+        .input-row { display: flex; gap: 8px; }
+        input { flex: 1; background: #000; border: 1px solid #3a3a3e; color: #fff; padding: 14px; border-radius: 10px; outline: none; font-size: 16px; }
         input:focus { border-color: var(--accent); }
         
-        button { background: #007bff; color: #fff; border: none; padding: 14px 25px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-        button:hover { background: #0056b3; transform: translateY(-1px); }
+        button { background: #007bff; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover { background: #0069d9; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
-        
-        .secondary-btn { background: #2a2a2e; width: 100%; margin-top: 10px; }
+        .btn-secondary { background: #2a2a2e; border: 1px solid #444; }
 
-        /* Stats */
-        .status-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .badge { padding: 5px 12px; border-radius: 30px; font-size: 12px; font-weight: bold; background: #222; border: 1px solid #444; }
-        .badge.active { color: var(--accent); border-color: var(--accent); }
-        
-        .stat-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #222; font-size: 14px; }
-        .stat-val { color: var(--accent); font-family: monospace; }
-        h2 { margin: 0 0 15px 0; font-size: 18px; color: #fff; }
+        /* Motor Seçici (GPU/CPU) */
+        .engine-selector { display: flex; gap: 5px; background: #000; padding: 5px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #222; }
+        .engine-opt { flex: 1; text-align: center; padding: 10px; border-radius: 8px; font-size: 13px; cursor: pointer; transition: 0.3s; color: #666; font-weight: 600; }
+        .engine-opt.active { background: #1a1a1a; color: var(--accent); border: 1px solid rgba(0,255,136,0.3); }
+
+        /* Modal (Büyütme Penceresi) */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 9999; justify-content: center; align-items: center; padding: 15px; }
+        .modal-content { max-width: 100%; max-height: 100%; position: relative; display: flex; flex-direction: column; align-items: center; }
+        .modal-content img { max-width: 95vw; max-height: 80vh; border-radius: 12px; box-shadow: 0 0 50px rgba(0,0,0,1), 0 0 20px var(--accent); border: 1px solid #444; }
+        .close-modal { position: absolute; top: -50px; right: 0; color: #fff; font-size: 40px; cursor: pointer; }
+
+        /* İstatistikler */
+        .stat-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #222; font-size: 13px; }
+        .stat-val { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-weight: bold; }
+        h3 { margin: 0 0 15px 0; font-size: 18px; color: #fff; letter-spacing: 1px; }
+
+        /* Yükleme Ekranı */
+        #loader-txt { position: absolute; font-size: 14px; color: #555; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="main-card">
-        <div class="status-header">
-            <h2 id="model-name">Mamba Vision Engine</h2>
-            <div id="engine-badge" class="badge">BAŞLATILIYOR...</div>
+        <div class="engine-selector">
+            <div id="opt-webgpu" class="engine-opt active" onclick="switchEngine('webgpu')">GPU (Turbo)</div>
+            <div id="opt-wasm" class="engine-opt" onclick="switchEngine('wasm')">CPU (Güvenli)</div>
         </div>
 
-        <div class="preview-container" id="zoomArea">
-            <canvas id="outCanvas"></canvas>
+        <div class="preview-box" onclick="openModal()" title="Büyütmek için tıklayın">
+            <canvas id="mainCanvas"></canvas>
+            <div id="loader-txt">Model Yükleniyor...</div>
         </div>
 
-        <div class="input-box">
-            <input type="text" id="promptIn" placeholder="Bir şeyler hayal et..." autocomplete="off">
-            <button id="genBtn" onclick="generate()" disabled>ÜRET</button>
+        <div class="controls">
+            <div class="input-row">
+                <input type="text" id="promptIn" placeholder="Mesajınızı yazın (örn: Galaxy)..." autocomplete="off">
+                <button id="genBtn" onclick="generate()" disabled>ÜRET</button>
+            </div>
+            <button class="btn-secondary" onclick="downloadImage()">💾 Görseli İndir</button>
         </div>
-        <button class="secondary-btn" onclick="downloadImg()">⬇ Görseli PNG Olarak Kaydet</button>
     </div>
 
     <div class="side-card">
-        <h2>📊 Canlı İstatistikler</h2>
-        <div class="stat-item"><span>Donanım Modu</span><span class="stat-val" id="st-mode">-</span></div>
-        <div class="stat-item"><span>Çekirdek (Threads)</span><span class="stat-val" id="st-threads">-</span></div>
-        <div class="stat-item"><span>Çözünürlük</span><span class="stat-val" id="st-res">0x0</span></div>
-        <div class="stat-item"><span>Model Yükleme</span><span class="stat-val" id="st-load">Bekliyor</span></div>
-        <div class="stat-item"><span>Gecikme</span><span class="stat-val" id="st-time">0 ms</span></div>
-        <div class="stat-item"><span>Secure Context</span><span class="stat-val" id="st-iso">-</span></div>
-
-        <div style="margin-top: 25px; font-size: 12px; color: #888; line-height: 1.6;">
-            <b>İpucu:</b> Görselin üzerine basılı tutarak büyütebilirsiniz. GitHub Pages HTTPS sunduğu için WebGPU otomatik aktifleşir.
+        <h3>📊 Sistem Raporu</h3>
+        <div class="stat-item"><span>Donanım Modu</span><span class="stat-val" id="st-engine">-</span></div>
+        <div class="stat-item"><span>Hesaplama Süresi</span><span class="stat-val" id="st-time">0 ms</span></div>
+        <div class="stat-item"><span>Çözünürlük</span><span class="stat-val" id="st-res">-</span></div>
+        <div class="stat-item"><span>İşlemci İzole</span><span class="stat-val" id="st-iso">-</span></div>
+        <div class="stat-item"><span>Çekirdek Sayısı</span><span class="stat-val" id="st-threads">-</span></div>
+        
+        <div style="margin-top: 20px; padding: 12px; background: #000; border-radius: 10px; font-size: 11px; color: #777; line-height: 1.5;">
+            <b>Bilgi:</b> Girişler otomatik olarak küçük harfe çevrilir. Telefonda gri ekran sorunu yaşarsanız <b>CPU</b> moduna geçin.
         </div>
     </div>
 </div>
 
-<script>
-    let session, words, embeddings, imgSize, dim, ctx, imgData;
-    const MAX_S = 32;
+<div id="imgModal" class="modal" onclick="closeModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <span class="close-modal">&times;</span>
+        <img id="modalImg" src="" alt="Mamba Output High Res">
+        <p style="color: #888; margin-top: 15px;">Kapatmak için dışarıya tıklayın</p>
+    </div>
+</div>
 
-    // Ortam ve Multi-thread Ayarları
+<script>
+    let sess, wordToId, embTable, imgDim, embSize, ctx, rawImg;
+    let currentProvider = 'webgpu';
+    const MAX_LEN = 32;
+
+    // Ortam Ayarları
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/';
     ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
 
     window.onload = async () => {
+        document.getElementById('st-iso').innerText = window.crossOriginIsolated ? "AKTİF" : "PASİF";
         document.getElementById('st-threads').innerText = ort.env.wasm.numThreads;
-        document.getElementById('st-iso').innerText = window.crossOriginIsolated ? "EVET" : "HAYIR";
         
         try {
-            document.getElementById('st-load').innerText = "Aranıyor...";
             const res = await fetch('main.mambax');
             if(!res.ok) throw new Error();
             const blob = await res.blob();
-            await loadModel(blob);
-        } catch(e) {
-            document.getElementById('st-load').innerText = "HATA";
-            alert("main.mambax dosyası bulunamadı! GitHub repo kök dizinine dosyayı eklediğinizden emin olun.");
+            await initSystem(blob);
+        } catch(e) { 
+            document.getElementById('loader-txt').innerText = "Model (main.mambax) bulunamadı!"; 
         }
     };
 
-    async function loadModel(blob) {
-        document.getElementById('st-load').innerText = "Ayrıştırılıyor...";
+    async function initSystem(blob) {
         const buf = await blob.arrayBuffer();
         const dv = new DataView(buf);
-        
-        imgSize = dv.getUint32(8, true);
-        dim = dv.getUint32(12, true);
+        imgDim = dv.getUint32(8, true);
+        embSize = dv.getUint32(12, true);
         const jL = dv.getUint32(16, true);
-        words = JSON.parse(new TextDecoder().decode(buf.slice(20, 20 + jL)));
+        wordToId = JSON.parse(new TextDecoder().decode(buf.slice(20, 20 + jL)));
         
         let off = 20 + jL;
         const eL = dv.getUint32(off, true);
-        const eC = new Uint8Array(buf.slice(off+4, off+4+eL));
-        const oC = new Uint8Array(buf.slice(off+4+eL));
+        const eComp = new Uint8Array(buf.slice(off+4, off+4+eL));
+        const oComp = new Uint8Array(buf.slice(off+4+eL));
 
-        fflate.decompress(eC, (err, d1) => {
-            embeddings = new Float32Array(d1.buffer);
-            fflate.decompress(oC, async (err, d2) => {
-                try {
-                    // Önce WebGPU dene
-                    try {
-                        session = await ort.InferenceSession.create(d2, { executionProviders: ['webgpu'] });
-                        setUI(true);
-                    } catch(e) {
-                        // Olmazsa Multi-thread WASM
-                        session = await ort.InferenceSession.create(d2, { 
-                            executionProviders: ['wasm'],
-                            intraOpNumThreads: ort.env.wasm.numThreads
-                        });
-                        setUI(false);
-                    }
-                } catch(e) { alert("Model başlatma hatası."); }
+        fflate.decompress(eComp, (err, d1) => {
+            embTable = new Float32Array(d1.buffer);
+            fflate.decompress(oComp, async (err, d2) => {
+                window.rawOnnx = d2; 
+                await loadSession(currentProvider);
+                setupCanvas();
             });
         });
     }
 
-    function setUI(isGpu) {
-        const badge = document.getElementById('engine-badge');
-        badge.innerText = isGpu ? "WEBGPU AKTİF" : "WASM AKTİF";
-        if(isGpu) badge.classList.add('active');
-        document.getElementById('st-mode').innerText = isGpu ? "GPU (WebGPU)" : "CPU (WASM)";
-        document.getElementById('st-load').innerText = "TAMAM";
-        document.getElementById('st-res').innerText = `${imgSize}x${imgSize}`;
-        document.getElementById('genBtn').disabled = false;
+    async function loadSession(provider) {
+        document.getElementById('genBtn').disabled = true;
+        document.getElementById('st-engine').innerText = "Yükleniyor...";
         
-        const c = document.getElementById('outCanvas');
-        c.width = c.height = imgSize;
+        try {
+            const opts = provider === 'webgpu' ? 
+                { executionProviders: ['webgpu'] } : 
+                { executionProviders: ['wasm'], intraOpNumThreads: ort.env.wasm.numThreads };
+            
+            sess = await ort.InferenceSession.create(window.rawOnnx, opts);
+            currentProvider = provider;
+            
+            document.getElementById('st-engine').innerText = provider === 'webgpu' ? "GPU (WebGPU)" : "CPU (WASM)";
+            document.getElementById('genBtn').disabled = false;
+            document.getElementById('loader-txt').style.display = 'none';
+        } catch(e) {
+            console.error(e);
+            if(provider === 'webgpu') {
+                alert("WebGPU bu cihazda başlatılamadı. CPU moduna geçiliyor.");
+                switchEngine('wasm');
+            }
+        }
+    }
+
+    function switchEngine(type) {
+        if(currentProvider === type) return;
+        document.querySelectorAll('.engine-opt').forEach(el => el.classList.remove('active'));
+        document.getElementById(`opt-${type}`).classList.add('active');
+        if(window.rawOnnx) loadSession(type);
+    }
+
+    function setupCanvas() {
+        const c = document.getElementById('mainCanvas');
+        c.width = c.height = imgDim;
         ctx = c.getContext('2d', { alpha: false });
-        imgData = ctx.createImageData(imgSize, imgSize);
+        rawImg = ctx.createImageData(imgDim, imgDim);
+        document.getElementById('st-res').innerText = `${imgDim}x${imgDim}`;
     }
 
     async function generate() {
         const btn = document.getElementById('genBtn');
+        btn.innerText = "İşleniyor...";
         btn.disabled = true;
-        btn.innerText = "...";
+
+        // KRİTİK: Girişi küçük harflere çevir (Türkçe karakter desteği ile)
+        const rawInput = document.getElementById('promptIn').value;
+        const prompt = rawInput.toLocaleLowerCase('tr-TR').split(/\s+/);
         
-        const prompt = document.getElementById('promptIn').value.toLowerCase().split(/\s+/);
-        const input = new Float32Array(MAX_S * dim);
-        
-        for(let i=0; i<MAX_S; i++) {
-            const id = words[prompt[i] || "<|pad|>"] || 0;
-            input.set(embeddings.subarray(id * dim, (id * dim) + dim), i * dim);
+        const inputBuffer = new Float32Array(MAX_LEN * embSize);
+        for(let i=0; i<MAX_LEN; i++) {
+            const word = prompt[i] || "<|pad|>";
+            const id = wordToId[word] || 0;
+            inputBuffer.set(embTable.subarray(id * embSize, (id * embSize) + embSize), i * embSize);
         }
 
         const t0 = performance.now();
-        const res = await session.run({ input: new ort.Tensor('float32', input, [1, MAX_S, dim]) });
-        const output = await res.output.getData();
-        const t1 = performance.now();
-
-        const pix = imgData.data;
-        const area = imgSize * imgSize;
-        let r=0, g=area, b=area*2, p=0;
-        for(let i=0; i<area; i++) {
-            pix[p++] = (output[r++] + 1) * 127.5;
-            pix[p++] = (output[g++] + 1) * 127.5;
-            pix[p++] = (output[b++] + 1) * 127.5;
-            pix[p++] = 255;
-        }
-        ctx.putImageData(imgData, 0, 0);
-        document.getElementById('st-time').innerText = `${Math.round(t1-t0)} ms`;
-        btn.disabled = false;
+        try {
+            const res = await sess.run({ input: new ort.Tensor('float32', inputBuffer, [1, MAX_LEN, embSize]) });
+            const output = await res.output.getData();
+            
+            const pix = rawImg.data;
+            const area = imgDim * imgDim;
+            let r=0, g=area, b=area*2, p=0;
+            for(let i=0; i<area; i++) {
+                pix[p++] = (output[r++] + 1) * 127.5;
+                pix[p++] = (output[g++] + 1) * 127.5;
+                pix[p++] = (output[b++] + 1) * 127.5;
+                pix[p++] = 255;
+            }
+            ctx.putImageData(rawImg, 0, 0);
+            document.getElementById('st-time').innerText = `${Math.round(performance.now() - t0)} ms`;
+        } catch(e) { alert("Hata: " + e.message); }
+        
         btn.innerText = "ÜRET";
+        btn.disabled = false;
     }
 
-    function downloadImg() {
+    // Modal (Büyütme Penceresi) Fonksiyonları
+    function openModal() {
+        const modal = document.getElementById('imgModal');
+        const mImg = document.getElementById('modalImg');
+        // Canvas içeriğini yüksek kaliteli resme dönüştür
+        mImg.src = document.getElementById('mainCanvas').toDataURL('image/png');
+        modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('imgModal').style.display = 'none';
+    }
+
+    function downloadImage() {
         const a = document.createElement('a');
-        a.download = 'mamba-output.png';
-        a.href = document.getElementById('outCanvas').toDataURL();
+        a.download = `mamba_${Date.now()}.png`;
+        a.href = document.getElementById('mainCanvas').toDataURL();
         a.click();
     }
 </script>
