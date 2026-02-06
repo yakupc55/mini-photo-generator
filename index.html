@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mamba VX | Neural Engine</title>
+    <title>Mamba VX | Debug & Prompt Edition</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.all.min.js"></script>
     <script type="module">
@@ -12,336 +12,228 @@
     </script>
 
     <style>
-        :root {
-            --primary: #00ff88;
-            --bg: #050507;
-            --card: rgba(25, 25, 30, 0.95);
-            --accent: #007bff;
-        }
+        :root { --primary: #00ff88; --bg: #0a0a0c; --card: #15151a; --accent: #007bff; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 10px; }
+        
+        .layout { display: grid; grid-template-columns: 1fr 320px; gap: 15px; max-width: 1200px; margin: auto; }
+        @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
-        body {
-            background: var(--bg);
-            color: white;
-            font-family: 'Inter', system-ui, sans-serif;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
-        }
+        .panel { background: var(--card); border-radius: 20px; padding: 20px; border: 1px solid #2a2a2e; }
 
-        .app-container {
-            width: 100%;
-            max-width: 1000px;
-            padding: 20px;
-            display: grid;
-            grid-template-columns: 1fr 320px;
-            gap: 20px;
-        }
+        /* Hazır Promptlar Paneli */
+        .prompt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-top: 15px; max-height: 200px; overflow-y: auto; padding-right: 5px; }
+        .prompt-chip { background: #222; border: 1px solid #333; padding: 8px; border-radius: 8px; font-size: 11px; cursor: pointer; text-align: center; transition: 0.2s; }
+        .prompt-chip:hover { border-color: var(--primary); background: #2a2a2a; }
 
-        @media (max-width: 850px) { .app-container { grid-template-columns: 1fr; } }
+        /* Görsel Alanı */
+        .canvas-container { position: relative; width: 100%; aspect-ratio: 1/1; background: #000; border-radius: 15px; overflow: hidden; margin-bottom: 15px; }
+        canvas { width: 100%; height: 100%; image-rendering: pixelated; }
 
-        .glass-panel {
-            background: var(--card);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 28px;
-            padding: 25px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-        }
-
-        /* Görsel ve Yükleme Alanı */
-        .canvas-wrapper {
-            position: relative;
-            width: 100%;
-            aspect-ratio: 1/1;
-            background: #000;
-            border-radius: 20px;
-            overflow: hidden;
-            border: 2px solid #1a1a1a;
-        }
-
-        canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
-
-        /* Progress Bar (İlerleme Çubuğu) */
-        .progress-overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-        }
-
-        .bar-container {
-            width: 70%;
-            height: 6px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-            overflow: hidden;
-            margin-top: 15px;
-        }
-
-        .bar-fill {
-            width: 0%;
-            height: 100%;
-            background: linear-gradient(90deg, var(--accent), var(--primary));
-            transition: width 0.3s ease;
-            box-shadow: 0 0 15px var(--primary);
-        }
+        /* Progress ve Log */
+        .overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); display: none; flex-direction: column; align-items: center; justify-content: center; }
+        #log-screen { background: #000; color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; border-radius: 10px; height: 120px; overflow-y: auto; border: 1px solid #333; margin-top: 10px; }
 
         /* Form Elemanları */
-        .input-box {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-top: 20px;
-        }
+        input { width: 100%; background: #000; border: 1px solid #333; padding: 15px; border-radius: 12px; color: #fff; box-sizing: border-box; margin-bottom: 10px; }
+        .btn { width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; margin-bottom: 5px; }
+        .btn-gen { background: var(--accent); color: white; }
+        .btn-log { background: #333; color: #ccc; font-size: 11px; }
 
-        input {
-            background: #000;
-            border: 1px solid #333;
-            padding: 16px;
-            border-radius: 15px;
-            color: white;
-            font-size: 16px;
-            outline: none;
-        }
-
-        input:focus { border-color: var(--primary); }
-
-        .gen-btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 18px;
-            border-radius: 15px;
-            font-weight: 800;
-            cursor: pointer;
-            transition: 0.3s;
-            letter-spacing: 1px;
-        }
-
-        .gen-btn:disabled { opacity: 0.4; cursor: wait; }
-
-        /* Tab Sistemi */
-        .tabs {
-            display: flex;
-            background: #000;
-            padding: 5px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 10px;
-            text-align: center;
-            font-size: 12px;
-            cursor: pointer;
-            border-radius: 8px;
-            color: #555;
-        }
-
-        .tab.active { background: #222; color: var(--primary); font-weight: bold; }
-
-        /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.97);
-            z-index: 999;
-            align-items: center; justify-content: center;
-        }
-        .modal img { max-width: 90%; max-height: 80%; border-radius: 10px; border: 1px solid #333; }
-        .close-btn { position: absolute; top: 20px; right: 20px; font-size: 30px; cursor: pointer; color: #ff4444; }
-
-        #status-txt { font-size: 14px; font-weight: bold; color: var(--primary); }
+        .progress-bar { width: 80%; height: 4px; background: #222; border-radius: 2px; margin-top: 10px; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: 0.3s; }
+        
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
+        .modal img { max-width: 95%; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-<div class="app-container">
-    <div class="glass-panel">
-        <div class="tabs">
-            <div id="tab-webgpu" class="tab active" onclick="switchEngine('webgpu')">GPU (Turbo)</div>
-            <div id="tab-wasm" class="tab" onclick="switchEngine('wasm')">CPU (Multi-Thread)</div>
-        </div>
-
-        <div class="canvas-wrapper">
+<div class="layout">
+    <div class="panel">
+        <h3 style="margin:0 0 10px 0">🎨 Üretim Paneli</h3>
+        
+        <div class="canvas-container">
             <canvas id="mainCanvas" onclick="openModal()"></canvas>
-            
-            <div id="progressZone" class="progress-overlay">
-                <span id="status-txt">BAŞLATILIYOR...</span>
-                <div class="bar-container">
-                    <div id="barFill" class="bar-fill"></div>
-                </div>
-                <span id="perc-txt" style="margin-top:10px; font-size:12px; color:#888;">0%</span>
+            <div id="loader" class="overlay">
+                <span id="status-txt" style="font-size: 12px;">BEKLENİYOR...</span>
+                <div class="progress-bar"><div id="p-fill" class="progress-fill"></div></div>
             </div>
         </div>
 
-        <div class="input-box">
-            <input type="text" id="promptIn" placeholder="Bir şey hayal et (örn: futuristic city)..." autocomplete="off">
-            <button id="genBtn" class="gen-btn" onclick="generate()" disabled>ÜRETİMİ BAŞLAT</button>
-        </div>
+        <input type="text" id="promptIn" placeholder="Buraya yazın veya aşağıdan seçin...">
+        <button class="btn btn-gen" id="genBtn" onclick="generate()" disabled>GÖRSELİ ÜRET</button>
+        
+        <h4>🚀 Hazır Promptlar</h4>
+        <div class="prompt-grid" id="promptGrid"></div>
     </div>
 
-    <div class="side-panel">
-        <div class="glass-panel">
-            <h4 style="margin:0 0 15px 0">SİSTEM BİLGİSİ</h4>
-            <div style="font-size:13px; color:#888;">
-                <p>Motor: <span id="st-engine" style="color:var(--primary)">-</span></p>
-                <p>Süre: <span id="st-time" style="color:var(--primary)">0 ms</span></p>
-                <p>Cihaz Çekirdek: <span id="st-cores" style="color:var(--primary)">-</span></p>
-            </div>
-            <button onclick="downloadImg()" style="width:100%; background:#111; color:#fff; border:1px solid #333; padding:12px; border-radius:10px; cursor:pointer;">💾 PNG İndir</button>
+    <div class="panel">
+        <h3 style="margin:0 0 10px 0">🛠 Sistem & Log</h3>
+        <div style="font-size: 12px; color: #888; margin-bottom: 10px;">
+            Motor: <span id="st-engine" style="color:var(--primary)">Yükleniyor...</span><br>
+            Hız: <span id="st-time" style="color:var(--primary)">0 ms</span>
+        </div>
+        
+        <div id="log-screen">--- Sistem Logları Bekleniyor (Mobil Hata Takibi) ---</div>
+        <button class="btn btn-log" style="margin-top:10px" onclick="clearLog()">Logları Temizle</button>
+        <button class="btn btn-log" onclick="downloadImg()">💾 Görseli Kaydet</button>
+        
+        <div style="margin-top:20px; background:#111; padding:10px; border-radius:10px; font-size:11px; color:#666;">
+            <b>Gri Ekran Hatası İçin:</b> Loglarda "GPU" veya "Buffer" hatası görüyorsanız, WebGPU mobil uyumlu değildir. Otomatik CPU'ya geçiş yapılacaktır.
         </div>
     </div>
 </div>
 
-<div id="imgModal" class="modal">
-    <span class="close-btn" onclick="closeModal()">&times;</span>
-    <img id="modalImg" src="">
-</div>
+<div id="imgModal" class="modal" onclick="this.style.display='none'"><img id="modalImg"></div>
 
 <script>
-    let session, words, embeddings, imgSize, dim, ctx, imgData;
-    let currentMode = 'webgpu';
-    const MAX_S = 32;
+    const promptLibrary = [
+        "kırmızı araba", "yeşil araba", "sarı araba", "siyah bina", "gri bina", "yeşil bina", "sarı bina",
+        "aslan", "banyo", "oğlan", "cami", "köpeks", "dondurma", "eyfel kulesi", "balık", "kız", "karınca",
+        "kedi", "mutfak", "adam", "dağ", "oturma odası", "uzay", "kalabalık cadde", "kadın", "dünya"
+    ];
+
+    let sess, wordToId, embTable, imgDim, embSize, ctx, rawImg;
+    let currentEngine = 'webgpu';
+
+    function log(msg) {
+        const screen = document.getElementById('log-screen');
+        screen.innerHTML += `<br>> ${msg}`;
+        screen.scrollTop = screen.scrollHeight;
+        console.log(msg);
+    }
+
+    function clearLog() { document.getElementById('log-screen').innerHTML = "> Loglar temizlendi."; }
+
+    // Promptları Ekrana Bas
+    const grid = document.getElementById('promptGrid');
+    promptLibrary.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'prompt-chip';
+        div.innerText = p;
+        div.onclick = () => document.getElementById('promptIn').value = p;
+        grid.appendChild(div);
+    });
 
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/';
     ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
 
     window.onload = async () => {
-        document.getElementById('st-cores').innerText = navigator.hardwareConcurrency;
+        log("Sistem başlatıldı. Model aranıyor...");
         try {
             const res = await fetch('main.mambax');
             const blob = await res.blob();
             const buf = await blob.arrayBuffer();
             const dv = new DataView(buf);
             
-            imgSize = dv.getUint32(8, true);
-            dim = dv.getUint32(12, true);
+            imgDim = dv.getUint32(8, true);
+            embSize = dv.getUint32(12, true);
             const jL = dv.getUint32(16, true);
-            words = JSON.parse(new TextDecoder().decode(buf.slice(20, 20 + jL)));
+            wordToId = JSON.parse(new TextDecoder().decode(buf.slice(20, 20 + jL)));
             
             let off = 20 + jL;
             const eL = dv.getUint32(off, true);
-            const eC = new Uint8Array(buf.slice(off+4, off+4+eL));
-            const oC = new Uint8Array(buf.slice(off+4+eL));
+            const eComp = new Uint8Array(buf.slice(off+4, off+4+eL));
+            const oComp = new Uint8Array(buf.slice(off+4+eL));
 
-            fflate.decompress(eC, (err, d1) => {
-                embeddings = new Float32Array(d1.buffer);
-                fflate.decompress(oC, async (err, d2) => {
-                    window.modelBuffer = d2;
-                    await initSession(currentMode);
-                    initUI();
+            fflate.decompress(eComp, (err, d1) => {
+                embTable = new Float32Array(d1.buffer);
+                fflate.decompress(oComp, async (err, d2) => {
+                    window.modelData = d2;
+                    await initEngine('webgpu');
+                    setupCanvas();
                 });
             });
-        } catch(e) { alert("Model dosyası eksik!"); }
+        } catch(e) { log("Kritik Hata: " + e.message); }
     };
 
-    async function initSession(mode) {
-        document.getElementById('genBtn').disabled = true;
+    async function initEngine(mode) {
+        log(`${mode.toUpperCase()} motoru yükleniyor...`);
         try {
-            const opts = mode === 'webgpu' ? { executionProviders: ['webgpu'] } : 
-                         { executionProviders: ['wasm'], intraOpNumThreads: ort.env.wasm.numThreads, executionMode: 'parallel' };
-            
-            session = await ort.InferenceSession.create(window.modelBuffer, opts);
-            currentMode = mode;
+            const opts = mode === 'webgpu' ? { executionProviders: ['webgpu'] } : { executionProviders: ['wasm'], intraOpNumThreads: ort.env.wasm.numThreads };
+            sess = await ort.InferenceSession.create(window.modelData, opts);
+            currentEngine = mode;
             document.getElementById('st-engine').innerText = mode.toUpperCase();
             document.getElementById('genBtn').disabled = false;
-        } catch(e) { if(mode === 'webgpu') switchEngine('wasm'); }
+            log("Motor hazır.");
+        } catch(e) {
+            log("Motor Hatası: " + e.message);
+            if(mode === 'webgpu') {
+                log("GPU Başarısız. CPU'ya geçiliyor...");
+                initEngine('wasm');
+            }
+        }
     }
 
-    function switchEngine(mode) {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.getElementById('tab-' + mode).classList.add('active');
-        initSession(mode);
-    }
-
-    function initUI() {
+    function setupCanvas() {
         const c = document.getElementById('mainCanvas');
-        c.width = c.height = imgSize;
-        ctx = c.getContext('2d', { alpha: false, desynchronized: true });
-        imgData = ctx.createImageData(imgSize, imgSize);
+        c.width = c.height = imgDim;
+        ctx = c.getContext('2d', { alpha: false });
+        rawImg = ctx.createImageData(imgDim, imgDim);
+        log(`Canvas hazır: ${imgDim}x${imgDim}`);
     }
 
     async function generate() {
-        const prompt = document.getElementById('promptIn').value.toLocaleLowerCase('tr-TR').split(/\s+/);
-        const overlay = document.getElementById('progressZone');
-        const bar = document.getElementById('barFill');
-        const perc = document.getElementById('perc-txt');
+        const loader = document.getElementById('loader');
+        const pFill = document.getElementById('p-fill');
         const status = document.getElementById('status-txt');
+        
+        loader.style.display = 'flex';
+        pFill.style.width = '10%';
+        
+        const rawP = document.getElementById('promptIn').value;
+        const prompt = rawP.toLocaleLowerCase('tr-TR').split(/\s+/);
+        log(`Prompt işleniyor: ${rawP}`);
 
-        overlay.style.display = 'flex';
-        bar.style.width = '0%';
-        
-        // Adım 1: Veri Hazırlama
-        status.innerText = "VERİLER İŞLENİYOR...";
-        updateProgress(20);
-        
-        const input = new Float32Array(MAX_S * dim);
-        for(let i=0; i<MAX_S; i++) {
-            const id = words[prompt[i] || "<|pad|>"] || 0;
-            input.set(embeddings.subarray(id * dim, (id * dim) + dim), i * dim);
+        const input = new Float32Array(32 * embSize);
+        for(let i=0; i<32; i++) {
+            const id = wordToId[prompt[i] || "<|pad|>"] || 0;
+            input.set(embTable.subarray(id * embSize, (id * embSize) + embSize), i * embSize);
         }
 
-        // Adım 2: Hesaplama (GPU/CPU)
-        status.innerText = "SİNİR AĞI ÇALIŞIYOR...";
-        updateProgress(50);
-        
+        pFill.style.width = '40%';
+        status.innerText = "HESAPLANIYOR...";
+
         const t0 = performance.now();
         try {
-            const feeds = { input: new ort.Tensor('float32', input, [1, MAX_S, dim]) };
-            const results = await session.run(feeds);
+            const res = await sess.run({ input: new ort.Tensor('float32', input, [1, 32, embSize]) });
+            log("Hesaplama bitti. Veri okunuyor...");
             
-            // GRİ EKRAN FIX: Belleği zorla senkronize et (özellikle mobil GPU için)
-            status.innerText = "BELLEK SENKRONİZE EDİLİYOR...";
-            updateProgress(80);
+            pFill.style.width = '70%';
+            const out = await res.output.getData(); 
             
-            const output = await results.output.getData(); 
+            if(!out || out[0] === undefined) throw new Error("GPU boş veri döndü (Gri Ekran)");
 
-            // Adım 3: Piksel Dönüştürme
-            status.innerText = "GÖRSEL OLUŞTURULUYOR...";
-            const pix = imgData.data;
-            const area = imgSize * imgSize;
+            const pix = rawImg.data;
+            const area = imgDim * imgDim;
             let r=0, g=area, b=area*2, p=0;
             for(let i=0; i<area; i++) {
-                pix[p++] = (output[r++] + 1) * 127.5;
-                pix[p++] = (output[g++] + 1) * 127.5;
-                pix[p++] = (output[b++] + 1) * 127.5;
+                pix[p++] = (out[r++] + 1) * 127.5;
+                pix[p++] = (out[g++] + 1) * 127.5;
+                pix[p++] = (out[b++] + 1) * 127.5;
                 pix[p++] = 255;
             }
+            ctx.putImageData(rawImg, 0, 0);
             
-            ctx.putImageData(imgData, 0, 0);
-            updateProgress(100);
+            pFill.style.width = '100%';
             document.getElementById('st-time').innerText = Math.round(performance.now() - t0) + " ms";
-            
-            setTimeout(() => overlay.style.display = 'none', 500);
-        } catch(e) { 
-            alert("Hata oluştu, CPU moduna geçiliyor."); 
-            overlay.style.display = 'none';
-            switchEngine('wasm');
+            log("Görsel başarıyla oluşturuldu.");
+        } catch(e) {
+            log("Üretim Hatası: " + e.message);
+            alert("Hata: " + e.message + ". Sayfa CPU moduna alınabilir.");
         }
-
-        function updateProgress(p) {
-            bar.style.width = p + '%';
-            perc.innerText = p + '%';
-        }
+        
+        setTimeout(() => loader.style.display = 'none', 500);
     }
 
     function openModal() {
-        const m = document.getElementById('imgModal');
         document.getElementById('modalImg').src = document.getElementById('mainCanvas').toDataURL();
-        m.style.display = 'flex';
+        document.getElementById('imgModal').style.display = 'flex';
     }
-    function closeModal() { document.getElementById('imgModal').style.display = 'none'; }
+
     function downloadImg() {
         const a = document.createElement('a');
-        a.download = 'mamba_render.png';
+        a.download = 'mamba_out.png';
         a.href = document.getElementById('mainCanvas').toDataURL();
         a.click();
     }
