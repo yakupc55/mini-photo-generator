@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mamba VX | Hard-Sync Edition</title>
+    <title>Mamba VX | Neural Vision</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.all.min.js"></script>
     <script type="module">
@@ -12,81 +12,240 @@
     </script>
 
     <style>
-        :root { --primary: #00ff88; --bg: #050508; --card: #111116; --accent: #007bff; }
-        body { background: var(--bg); color: #e0e0e0; font-family: 'Inter', sans-serif; margin: 0; padding: 10px; }
-        .layout { max-width: 1000px; margin: auto; display: grid; grid-template-columns: 1fr 340px; gap: 15px; }
-        @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
-        .panel { background: var(--card); border-radius: 24px; padding: 20px; border: 1px solid #222; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .canvas-area { position: relative; width: 100%; aspect-ratio: 1/1; background: #000; border-radius: 16px; overflow: hidden; border: 2px solid #1a1a1a; margin-bottom: 15px; }
-        canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
-        .prompt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; max-height: 180px; overflow-y: auto; margin-top: 15px; padding: 5px; background: rgba(0,0,0,0.3); border-radius: 12px; }
-        .chip { background: #1a1a1f; border: 1px solid #333; padding: 10px; border-radius: 10px; font-size: 11px; cursor: pointer; text-align: center; color: #aaa; transition: 0.2s; }
-        .chip:hover { border-color: var(--primary); color: #fff; }
-        input { width: 100%; background: #000; border: 1px solid #333; padding: 16px; border-radius: 14px; color: #fff; box-sizing: border-box; font-size: 16px; margin-bottom: 12px; }
-        .btn-gen { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: 800; cursor: pointer; background: var(--accent); color: #fff; letter-spacing: 1px; }
-        .btn-gen:disabled { opacity: 0.3; }
-        .overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 5; }
-        .loader-bar { width: 60%; height: 4px; background: #222; border-radius: 2px; margin-top: 12px; overflow: hidden; }
-        .loader-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; box-shadow: 0 0 10px var(--primary); }
+        :root {
+            --primary: #00ff88;
+            --accent: #00d9ff;
+            --bg: #030305;
+            --glass: rgba(18, 18, 22, 0.85);
+            --border: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            background: var(--bg);
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(0, 255, 136, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(0, 217, 255, 0.05) 0%, transparent 40%);
+            color: #fff;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .app-shell {
+            width: 100%;
+            max-width: 1100px;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 25px;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @media (max-width: 900px) { .app-shell { grid-template-columns: 1fr; padding: 15px; } }
+
+        /* Derinlikli Cam Kartlar */
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 32px;
+            padding: 30px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            position: relative;
+        }
+
+        /* Görsel Alanı */
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1/1;
+            background: #000;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: inset 0 0 40px rgba(0,0,0,1), 0 0 20px rgba(0,255,136,0.1);
+            border: 1px solid #1a1a1e;
+        }
+
+        canvas { width: 100%; height: 100%; image-rendering: pixelated; transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); }
+        .canvas-container:hover canvas { transform: scale(1.02); }
+
+        /* Yeni Dolum Ekranı */
+        .loader-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            backdrop-filter: blur(5px);
+        }
+
+        .progress-box { width: 65%; text-align: center; }
+        .status-text { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--primary); font-weight: 700; margin-bottom: 12px; }
+        .bar-container { height: 4px; width: 100%; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; position: relative; }
+        .bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.4s ease; box-shadow: 0 0 15px var(--primary); }
+
+        /* Input & Button */
+        .input-group { margin-top: 25px; }
+        input {
+            width: 100%;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            padding: 18px 24px;
+            border-radius: 18px;
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+            transition: 0.3s;
+            box-sizing: border-box;
+        }
+        input:focus { border-color: var(--primary); background: rgba(0,0,0,0.5); box-shadow: 0 0 20px rgba(0,255,136,0.1); }
+
+        .btn-generate {
+            width: 100%;
+            margin-top: 12px;
+            padding: 18px;
+            border-radius: 18px;
+            border: none;
+            background: linear-gradient(135deg, var(--primary) 0%, #00cc6e 100%);
+            color: #000;
+            font-weight: 800;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn-generate:hover { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 10px 20px rgba(0,255,136,0.2); }
+        .btn-generate:disabled { opacity: 0.3; cursor: wait; }
+
+        /* Prompt Chips */
+        .prompt-label { font-size: 12px; color: #666; font-weight: 700; margin: 25px 0 12px 5px; text-transform: uppercase; letter-spacing: 1px; }
+        .chips-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+            gap: 8px;
+            max-height: 180px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        .chip {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            color: #aaa;
+            cursor: pointer;
+            text-align: center;
+            transition: 0.2s;
+        }
+        .chip:hover { background: rgba(0, 255, 136, 0.08); border-color: var(--primary); color: #fff; }
+
+        /* Info Panel */
+        .info-panel { height: fit-content; }
+        .stat-card {
+            background: rgba(0,0,0,0.2);
+            border-radius: 20px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stat-label { color: #555; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+        .stat-value { color: var(--accent); font-family: 'Courier New', monospace; font-weight: 700; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-<div class="layout">
-    <div class="panel">
-        <div class="canvas-area">
+<div class="app-shell">
+    <div class="glass-card">
+        <div class="canvas-container">
             <canvas id="mainCanvas"></canvas>
-            <div id="loader" class="overlay">
-                <b id="status-txt" style="color:var(--primary); font-size:14px;">BEKLEYİN...</b>
-                <div class="loader-bar"><div id="p-fill" class="loader-fill"></div></div>
+            
+            <div id="loader" class="loader-overlay">
+                <div class="progress-box">
+                    <div id="status-txt" class="status-text">Sinir Ağı Başlatılıyor</div>
+                    <div class="bar-container">
+                        <div id="bar-fill" class="bar-fill"></div>
+                    </div>
+                    <div id="perc-txt" style="margin-top:10px; font-size:10px; color:#444;">0%</div>
+                </div>
             </div>
         </div>
 
-        <input type="text" id="promptIn" placeholder="Bir prompt seçin veya yazın...">
-        <button class="btn-gen" id="genBtn" onclick="generate()" disabled>GÖRSELİ ÜRET</button>
+        <div class="input-group">
+            <input type="text" id="promptIn" placeholder="Hayalinizdeki sahneyi yazın..." autocomplete="off">
+            <button id="genBtn" class="btn-generate" onclick="generate()" disabled>Görseli Oluştur</button>
+        </div>
 
-        <div class="prompt-grid" id="pGrid"></div>
+        <div class="prompt-label">Hızlı Seçimler</div>
+        <div class="chips-container" id="chipGrid"></div>
     </div>
 
-    <div class="panel">
-        <h3 style="margin:0 0 15px 0; font-size:16px;">SİSTEM DURUMU</h3>
-        <div style="font-size:12px; line-height:2;">
-            Mod: <span id="st-engine" style="color:var(--primary)">Yükleniyor...</span><br>
-            Performans: <span id="st-time" style="color:var(--primary)">0 ms</span><br>
-            Durum: <span id="st-debug" style="color:var(--accent)">Sistem Hazır</span>
+    <div class="info-panel">
+        <div class="glass-card" style="padding: 25px;">
+            <h3 style="margin:0 0 20px 0; font-size:16px; letter-spacing:1px; color:var(--primary)">SİSTEM DURUMU</h3>
+            
+            <div class="stat-card">
+                <span class="stat-label">Motor</span>
+                <span class="stat-value" id="st-engine">-</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">İşleme</span>
+                <span class="stat-value" id="st-time">0 ms</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Cihaz</span>
+                <span class="stat-value" id="st-device">Tespit Ediliyor</span>
+            </div>
+
+            <button onclick="downloadImg()" style="width:100%; margin-top:20px; padding:15px; border-radius:15px; background:transparent; border:1px solid #333; color:#888; cursor:pointer; font-weight:700; font-size:12px;">💾 GÖRSELİ KAYDET</button>
         </div>
-        <hr style="border:0; border-top:1px solid #222; margin:15px 0;">
-        <button onclick="downloadImg()" style="width:100%; padding:12px; border-radius:10px; background:#1a1a1f; border:1px solid #333; color:#fff; cursor:pointer;">💾 RESMİ KAYDET</button>
-        <p style="font-size:10px; color:#555; margin-top:15px;">Eğer hala gri ekran alıyorsanız, tarayıcınız GPU belleğini JS'ye aktarmıyor demektir. Bu durumda ekranı yenileyip bir kez daha deneyin.</p>
+        
+        <div style="padding: 20px; color:#444; font-size:10px; text-align:center; line-height:1.6;">
+            Mamba Vision v4.2<br>Neural Architecture for Mobile Devices
+        </div>
     </div>
 </div>
 
 <script>
-    const prompts = [
-        "kırmızı araba", "yeşil araba", "sarı araba", "siyah bina", "gri bina", "yeşil bina", "sarı bina",
-        "aslan", "banyo", "oğlan", "cami", "köpek", "dondurma", "eyfel kulesi", "balık", "kız", "karınca",
-        "kedi", "mutfak", "adam", "dağ", "oturma odası", "uzay", "kalabalık cadde", "kadın", "dünya"
-    ];
+    const promptList = ["kırmızı araba", "yeşil araba", "sarı araba", "siyah bina", "gri bina", "yeşil bina", "sarı bina", "aslan", "banyo", "oğlan", "cami", "köpek", "dondurma", "eyfel kulesi", "balık", "kız", "karınca", "kedi", "mutfak", "adam", "dağ", "oturma odası", "uzay", "kalabalık cadde", "kadın", "dünya"];
 
     let sess, wordToId, embTable, imgDim, embSize, ctx, rawImg;
 
-    // Prompt Grid Oluştur
-    const grid = document.getElementById('pGrid');
-    prompts.forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'chip';
-        div.innerText = p;
-        div.onclick = () => document.getElementById('promptIn').value = p;
-        grid.appendChild(div);
+    // Chips UI
+    const grid = document.getElementById('chipGrid');
+    promptList.forEach(p => {
+        const d = document.createElement('div');
+        d.className = 'chip'; d.innerText = p;
+        d.onclick = () => { document.getElementById('promptIn').value = p; };
+        grid.appendChild(d);
     });
 
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/';
-    
+    ort.env.wasm.numThreads = Math.min(navigator.hardwareConcurrency || 4, 8);
+
     window.onload = async () => {
         try {
             const res = await fetch('main.mambax');
-            const blob = await res.blob();
-            const buf = await blob.arrayBuffer();
+            const buf = await res.arrayBuffer();
             const dv = new DataView(buf);
             
             imgDim = dv.getUint32(8, true);
@@ -107,17 +266,23 @@
                     setupCanvas();
                 });
             });
-        } catch(e) { document.getElementById('st-debug').innerText = "Hata: Model bulunamadı."; }
+        } catch(e) { console.error("Yükleme hatası"); }
     };
 
     async function initEngine() {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const mode = isMobile ? 'wasm' : 'webgpu';
+        
         try {
-            // WebGPU ile başla, hata alırsan WASM'a geç
-            sess = await ort.InferenceSession.create(window.modelData, { executionProviders: ['webgpu'] });
-            document.getElementById('st-engine').innerText = "GPU (WebGPU)";
+            sess = await ort.InferenceSession.create(window.modelData, { 
+                executionProviders: [mode],
+                intraOpNumThreads: ort.env.wasm.numThreads 
+            });
+            document.getElementById('st-engine').innerText = mode.toUpperCase();
+            document.getElementById('st-device').innerText = isMobile ? "MOBILE CPU" : "DESKTOP GPU";
         } catch(e) {
-            sess = await ort.InferenceSession.create(window.modelData, { executionProviders: ['wasm'], intraOpNumThreads: 4 });
-            document.getElementById('st-engine').innerText = "CPU (WASM)";
+            sess = await ort.InferenceSession.create(window.modelData, { executionProviders: ['wasm'] });
+            document.getElementById('st-engine').innerText = "WASM";
         }
         document.getElementById('genBtn').disabled = false;
     }
@@ -125,18 +290,18 @@
     function setupCanvas() {
         const c = document.getElementById('mainCanvas');
         c.width = c.height = imgDim;
-        ctx = c.getContext('2d', { alpha: false, desynchronized: true });
+        ctx = c.getContext('2d', { alpha: false });
         rawImg = ctx.createImageData(imgDim, imgDim);
     }
 
     async function generate() {
         const loader = document.getElementById('loader');
-        const pFill = document.getElementById('p-fill');
+        const bar = document.getElementById('bar-fill');
         const status = document.getElementById('status-txt');
+        const perc = document.getElementById('perc-txt');
         
         loader.style.display = 'flex';
-        pFill.style.width = '10%';
-        status.innerText = "İŞLENİYOR...";
+        updateUI(15, "Veri Kodlanıyor...");
 
         const prompt = document.getElementById('promptIn').value.toLocaleLowerCase('tr-TR').split(/\s+/);
         const input = new Float32Array(32 * embSize);
@@ -145,27 +310,14 @@
             input.set(embTable.subarray(id * embSize, (id * embSize) + embSize), i * embSize);
         }
 
-        pFill.style.width = '40%';
+        updateUI(40, "Sinir Ağı Çözümleniyor...");
         const t0 = performance.now();
 
         try {
-            const results = await sess.run({ input: new ort.Tensor('float32', input, [1, 32, embSize]) });
+            const res = await sess.run({ input: new ort.Tensor('float32', input, [1, 32, embSize]) });
+            updateUI(75, "Pikseller Oluşturuluyor...");
             
-            pFill.style.width = '70%';
-            status.innerText = "SENKRONİZE EDİLİYOR...";
-
-            // --- KRİTİK MOBİL FIX ---
-            // Bazı mobil tarayıcılar (özellikle Safari/Chrome) GPU sonuçlarını anında JS'ye vermez.
-            // Küçük bir bekleme (micro-task) ekleyerek GPU'nun buffer'ı boşaltmasına izin veriyoruz.
-            await new Promise(r => setTimeout(r, 100)); 
-            
-            const out = await results.output.getData(); 
-            
-            // Eğer hala 0 dönüyorsa ikinci bir inatçı deneme yapıyoruz
-            if(out[0] === 0 && out[100] === 0) {
-                 await new Promise(r => setTimeout(r, 300));
-            }
-
+            const out = await res.output.getData(); 
             const pix = rawImg.data;
             const area = imgDim * imgDim;
             let r=0, g=area, b=area*2, p=0;
@@ -178,21 +330,24 @@
             }
             
             ctx.putImageData(rawImg, 0, 0);
-            pFill.style.width = '100%';
+            updateUI(100, "Tamamlandı!");
             document.getElementById('st-time').innerText = Math.round(performance.now() - t0) + " ms";
-            document.getElementById('st-debug').innerText = "Görsel Çizildi";
-        } catch(e) {
-            document.getElementById('st-debug').innerText = "Hata: " + e.message;
+        } catch(e) { console.error(e); }
+
+        setTimeout(() => { loader.style.display = 'none'; }, 600);
+
+        function updateUI(p, txt) {
+            bar.style.width = p + '%';
+            status.innerText = txt;
+            perc.innerText = p + '%';
         }
-        
-        setTimeout(() => loader.style.display = 'none', 600);
     }
 
     function downloadImg() {
-        const link = document.createElement('a');
-        link.download = `mamba_${Date.now()}.png`;
-        link.href = document.getElementById('mainCanvas').toDataURL('image/png');
-        link.click();
+        const a = document.createElement('a');
+        a.download = `render_${Date.now()}.png`;
+        a.href = document.getElementById('mainCanvas').toDataURL();
+        a.click();
     }
 </script>
 </body>
