@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mamba VX | Neural Vision</title>
+    <title>Mamba VX | Neural Engine</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.all.min.js"></script>
     <script type="module">
@@ -21,29 +21,22 @@
         }
 
         html, body { 
-            background: var(--bg); 
-            color: #fff; 
-            font-family: 'Segoe UI', system-ui, sans-serif; 
-            margin: 0; padding: 0; 
-            width: 100%; height: 100%;
-            overflow: hidden; 
-            touch-action: manipulation;
+            background: var(--bg); color: #fff; font-family: 'Segoe UI', system-ui, sans-serif; 
+            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; touch-action: manipulation;
         }
 
         /* Başlangıç Yükleme Ekranı */
         #splash-screen {
             position: fixed; inset: 0; background: var(--bg);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 2000; transition: opacity 0.5s;
+            z-index: 5000; transition: opacity 0.5s;
         }
 
-        /* TÜM EKRANI KAPLAYAN İŞLENİYOR EKRANI */
+        /* TÜM EKRAN KARARMA PANELİ */
         #full-proc-overlay {
-            position: fixed; inset: 0; 
-            background: rgba(0, 0, 0, 0.98);
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.98);
             display: none; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 3000; /* Her şeyin üstünde */
-            backdrop-filter: blur(10px);
+            z-index: 4000; backdrop-filter: blur(10px);
         }
 
         .app-shell {
@@ -59,14 +52,12 @@
         .glass-card {
             background: var(--glass); backdrop-filter: blur(20px);
             border: 1px solid var(--border); border-radius: 32px;
-            padding: 25px; box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-            margin-bottom: 20px;
+            padding: 25px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); margin-bottom: 20px;
         }
 
         .canvas-container {
-            width: 100%; aspect-ratio: 1/1;
-            background: #000; border-radius: 24px; overflow: hidden;
-            border: 1px solid #1a1a1e; position: relative;
+            width: 100%; aspect-ratio: 1/1; background: #000; 
+            border-radius: 24px; overflow: hidden; border: 1px solid #1a1a1e;
         }
 
         canvas { width: 100%; height: 100%; image-rendering: pixelated; }
@@ -80,73 +71,47 @@
         .btn-gen {
             width: 100%; margin-top: 15px; padding: 20px; border-radius: 18px;
             border: none; background: var(--primary); color: #000;
-            font-weight: 900; text-transform: uppercase; cursor: pointer;
-            transition: 0.3s; letter-spacing: 2px;
+            font-weight: 900; text-transform: uppercase; cursor: pointer; letter-spacing: 2px;
         }
 
-        .btn-gen:disabled {
-            background: #111 !important; color: #444 !important;
-            pointer-events: none !important;
-        }
+        .btn-gen:disabled { background: #111 !important; color: #444 !important; pointer-events: none !important; }
 
-        .chips {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 8px; margin-top: 15px; max-height: 140px; overflow-y: auto;
-        }
-
-        .chip {
-            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-            padding: 10px; border-radius: 12px; font-size: 11px; color: #777;
-            cursor: pointer; text-align: center;
-        }
-
-        .stat-card {
-            background: rgba(0,0,0,0.4); padding: 15px; border-radius: 20px;
-            margin-bottom: 10px; display: flex; justify-content: space-between;
-            font-size: 12px; border: 1px solid var(--border);
-        }
-
+        .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-top: 15px; max-height: 140px; overflow-y: auto; }
+        .chip { background: rgba(255,255,255,0.03); border: 1px solid var(--border); padding: 10px; border-radius: 12px; font-size: 11px; color: #777; cursor: pointer; text-align: center; }
+        .stat-card { background: rgba(0,0,0,0.4); padding: 15px; border-radius: 20px; margin-bottom: 10px; display: flex; justify-content: space-between; font-size: 12px; border: 1px solid var(--border); }
         .loader-bar { width: 200px; height: 4px; background: #111; border-radius: 10px; margin-top: 20px; overflow: hidden; }
-        .loader-progress { width: 0%; height: 100%; background: var(--primary); transition: width 0.3s; box-shadow: 0 0 15px var(--primary); }
+        .loader-progress { width: 0%; height: 100%; background: var(--primary); box-shadow: 0 0 15px var(--primary); }
     </style>
 </head>
 <body>
 
 <div id="splash-screen">
-    <div style="font-weight: 900; letter-spacing: 6px; color: var(--primary); font-size: 20px;">MAMBA</div>
-    <div style="font-size: 10px; margin-top: 10px; color: #444; letter-spacing: 2px;">SİSTEM HAZIRLANIYOR...</div>
+    <div style="font-weight: 900; letter-spacing: 6px; color: var(--primary); font-size: 20px;">MAMBA VX</div>
     <div class="loader-bar"><div id="splash-bar" class="loader-progress"></div></div>
 </div>
 
 <div id="full-proc-overlay">
     <div style="letter-spacing: 4px; font-size: 14px; font-weight: 900; color: var(--primary);">RESİM İŞLENİYOR</div>
     <div class="loader-bar"><div id="proc-bar" class="loader-progress"></div></div>
-    <div id="perc-txt" style="font-size: 11px; margin-top: 15px; color: #555; font-family: monospace;">%0</div>
+    <div id="perc-txt" style="font-size: 11px; margin-top: 15px; color: #555;">%0</div>
 </div>
 
 <div class="app-shell">
     <div class="glass-card">
-        <div class="canvas-container">
-            <canvas id="mainCanvas"></canvas>
-        </div>
-
-        <input type="text" id="promptIn" placeholder="Hayalinizdeki sahneyi yazın..." autocomplete="off">
+        <div class="canvas-container"><canvas id="mainCanvas"></canvas></div>
+        <input type="text" id="promptIn" placeholder="Bir tema yazın..." autocomplete="off">
         <button id="genBtn" class="btn-gen" onclick="generate()" disabled>BAŞLAT</button>
-
         <div class="chips" id="chipGrid"></div>
     </div>
-
     <div class="glass-card">
-        <h4 style="margin:0 0 15px 0; font-size:11px; letter-spacing:2px; color:var(--accent); text-transform: uppercase;">Sistem Detayları</h4>
         <div class="stat-card"><span>MOTOR</span><span id="st-engine">-</span></div>
         <div class="stat-card"><span>HIZ</span><span id="st-time">0 ms</span></div>
-        <button onclick="downloadImg()" style="width:100%; padding:14px; border-radius:14px; background:none; border:1px solid #222; color:#666; cursor:pointer; font-weight:700; font-size:11px; margin-top:10px;">GÖRSELİ KAYDET</button>
+        <button onclick="downloadImg()" style="width:100%; padding:14px; border-radius:14px; background:none; border:1px solid #222; color:#666; cursor:pointer; font-size:11px; margin-top:10px;">GÖRSELİ KAYDET</button>
     </div>
 </div>
 
 <script>
     const prompts = ["kırmızı araba", "yeşil araba", "sarı araba", "siyah bina", "gri bina", "yeşil bina", "sarı bina", "aslan", "banyo", "oğlan", "cami", "köpek", "dondurma", "eyfel kulesi", "balık", "kız", "karınca", "kedi", "mutfak", "adam", "dağ", "oturma odası", "uzay", "kalabalık cadde", "kadın", "dünya"];
-
     let sess, wordToId, embTable, imgDim, embSize, ctx, rawImg;
 
     const grid = document.getElementById('chipGrid');
@@ -163,14 +128,12 @@
         const sBar = document.getElementById('splash-bar');
         try {
             const res = await fetch('main.mambax');
-            sBar.style.width = '30%';
             const buf = await res.arrayBuffer();
             const dv = new DataView(buf);
             imgDim = dv.getUint32(8, true);
             embSize = dv.getUint32(12, true);
             const jL = dv.getUint32(16, true);
             wordToId = JSON.parse(new TextDecoder().decode(buf.slice(20, 20 + jL)));
-            
             let off = 20 + jL;
             const eL = dv.getUint32(off, true);
             const eComp = new Uint8Array(buf.slice(off+4, off+4+eL));
@@ -178,7 +141,6 @@
 
             fflate.decompress(eComp, (err, d1) => {
                 embTable = new Float32Array(d1.buffer);
-                sBar.style.width = '60%';
                 fflate.decompress(oComp, async (err, d2) => {
                     window.modelData = d2;
                     await initEngine();
@@ -197,9 +159,7 @@
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const mode = isMobile ? 'wasm' : 'webgpu';
         try {
-            sess = await ort.InferenceSession.create(window.modelData, { 
-                executionProviders: [mode], intraOpNumThreads: 4 
-            });
+            sess = await ort.InferenceSession.create(window.modelData, { executionProviders: [mode], intraOpNumThreads: 4 });
             document.getElementById('st-engine').innerText = mode.toUpperCase();
         } catch(e) {
             sess = await ort.InferenceSession.create(window.modelData, { executionProviders: ['wasm'] });
@@ -215,18 +175,24 @@
         rawImg = ctx.createImageData(imgDim, imgDim);
     }
 
+    // --- KRİTİK FONKSİYON ---
     async function generate() {
         const btn = document.getElementById('genBtn');
         const overlay = document.getElementById('full-proc-overlay');
         const bar = document.getElementById('proc-bar');
         const perc = document.getElementById('perc-txt');
         
-        // TÜM EKRANI KİLİTLE
+        // 1. ADIM: HEMEN KARART VE KİLİTLE (UI Update)
         btn.disabled = true;
         overlay.style.display = 'flex';
-        
-        updateUI(15, "15%");
+        bar.style.width = '5%';
+        perc.innerText = "%5";
 
+        // 2. ADIM: TARAYICIYA ÇİZİM İÇİN SÜRE VER (Micro-delay)
+        // Bu 50ms bekleme olmazsa tarayıcı kararmayı göstermeden donar.
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // 3. ADIM: ASIL İŞLEME BAŞLA
         const prompt = document.getElementById('promptIn').value.toLocaleLowerCase('tr-TR').split(/\s+/);
         const input = new Float32Array(32 * embSize);
         for(let i=0; i<32; i++) {
@@ -234,13 +200,9 @@
             input.set(embTable.subarray(id * embSize, (id * embSize) + embSize), i * embSize);
         }
 
-        updateUI(45, "45%");
         const t0 = performance.now();
-
         try {
             const res = await sess.run({ input: new ort.Tensor('float32', input, [1, 32, embSize]) });
-            updateUI(85, "85%");
-            
             const out = await res.output.getData(); 
             const pix = rawImg.data;
             const area = imgDim * imgDim;
@@ -252,24 +214,20 @@
                 pix[p++] = 255;
             }
             ctx.putImageData(rawImg, 0, 0);
-            updateUI(100, "100%");
             document.getElementById('st-time').innerText = Math.round(performance.now() - t0) + " ms";
+            bar.style.width = '100%';
+            perc.innerText = "100%";
         } catch(e) { console.error(e); }
 
         setTimeout(() => { 
             overlay.style.display = 'none'; 
             btn.disabled = false;
-        }, 600);
-
-        function updateUI(p, txt) {
-            bar.style.width = p + '%';
-            perc.innerText = txt;
-        }
+        }, 300);
     }
 
     function downloadImg() {
         const a = document.createElement('a');
-        a.download = `render_${Date.now()}.png`;
+        a.download = 'mamba.png';
         a.href = document.getElementById('mainCanvas').toDataURL();
         a.click();
     }
