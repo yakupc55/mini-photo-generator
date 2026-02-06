@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mamba VX | Debug & Prompt Edition</title>
+    <title>Mamba VX | Hard-Sync Edition</title>
     
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.all.min.js"></script>
     <script type="module">
@@ -12,114 +12,77 @@
     </script>
 
     <style>
-        :root { --primary: #00ff88; --bg: #0a0a0c; --card: #15151a; --accent: #007bff; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 10px; }
-        
-        .layout { display: grid; grid-template-columns: 1fr 320px; gap: 15px; max-width: 1200px; margin: auto; }
+        :root { --primary: #00ff88; --bg: #050508; --card: #111116; --accent: #007bff; }
+        body { background: var(--bg); color: #e0e0e0; font-family: 'Inter', sans-serif; margin: 0; padding: 10px; }
+        .layout { max-width: 1000px; margin: auto; display: grid; grid-template-columns: 1fr 340px; gap: 15px; }
         @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
-
-        .panel { background: var(--card); border-radius: 20px; padding: 20px; border: 1px solid #2a2a2e; }
-
-        /* Hazır Promptlar Paneli */
-        .prompt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-top: 15px; max-height: 200px; overflow-y: auto; padding-right: 5px; }
-        .prompt-chip { background: #222; border: 1px solid #333; padding: 8px; border-radius: 8px; font-size: 11px; cursor: pointer; text-align: center; transition: 0.2s; }
-        .prompt-chip:hover { border-color: var(--primary); background: #2a2a2a; }
-
-        /* Görsel Alanı */
-        .canvas-container { position: relative; width: 100%; aspect-ratio: 1/1; background: #000; border-radius: 15px; overflow: hidden; margin-bottom: 15px; }
-        canvas { width: 100%; height: 100%; image-rendering: pixelated; }
-
-        /* Progress ve Log */
-        .overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); display: none; flex-direction: column; align-items: center; justify-content: center; }
-        #log-screen { background: #000; color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; border-radius: 10px; height: 120px; overflow-y: auto; border: 1px solid #333; margin-top: 10px; }
-
-        /* Form Elemanları */
-        input { width: 100%; background: #000; border: 1px solid #333; padding: 15px; border-radius: 12px; color: #fff; box-sizing: border-box; margin-bottom: 10px; }
-        .btn { width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; margin-bottom: 5px; }
-        .btn-gen { background: var(--accent); color: white; }
-        .btn-log { background: #333; color: #ccc; font-size: 11px; }
-
-        .progress-bar { width: 80%; height: 4px; background: #222; border-radius: 2px; margin-top: 10px; }
-        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: 0.3s; }
-        
-        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
-        .modal img { max-width: 95%; border-radius: 10px; }
+        .panel { background: var(--card); border-radius: 24px; padding: 20px; border: 1px solid #222; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .canvas-area { position: relative; width: 100%; aspect-ratio: 1/1; background: #000; border-radius: 16px; overflow: hidden; border: 2px solid #1a1a1a; margin-bottom: 15px; }
+        canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
+        .prompt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; max-height: 180px; overflow-y: auto; margin-top: 15px; padding: 5px; background: rgba(0,0,0,0.3); border-radius: 12px; }
+        .chip { background: #1a1a1f; border: 1px solid #333; padding: 10px; border-radius: 10px; font-size: 11px; cursor: pointer; text-align: center; color: #aaa; transition: 0.2s; }
+        .chip:hover { border-color: var(--primary); color: #fff; }
+        input { width: 100%; background: #000; border: 1px solid #333; padding: 16px; border-radius: 14px; color: #fff; box-sizing: border-box; font-size: 16px; margin-bottom: 12px; }
+        .btn-gen { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: 800; cursor: pointer; background: var(--accent); color: #fff; letter-spacing: 1px; }
+        .btn-gen:disabled { opacity: 0.3; }
+        .overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 5; }
+        .loader-bar { width: 60%; height: 4px; background: #222; border-radius: 2px; margin-top: 12px; overflow: hidden; }
+        .loader-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; box-shadow: 0 0 10px var(--primary); }
     </style>
 </head>
 <body>
 
 <div class="layout">
     <div class="panel">
-        <h3 style="margin:0 0 10px 0">🎨 Üretim Paneli</h3>
-        
-        <div class="canvas-container">
-            <canvas id="mainCanvas" onclick="openModal()"></canvas>
+        <div class="canvas-area">
+            <canvas id="mainCanvas"></canvas>
             <div id="loader" class="overlay">
-                <span id="status-txt" style="font-size: 12px;">BEKLENİYOR...</span>
-                <div class="progress-bar"><div id="p-fill" class="progress-fill"></div></div>
+                <b id="status-txt" style="color:var(--primary); font-size:14px;">BEKLEYİN...</b>
+                <div class="loader-bar"><div id="p-fill" class="loader-fill"></div></div>
             </div>
         </div>
 
-        <input type="text" id="promptIn" placeholder="Buraya yazın veya aşağıdan seçin...">
-        <button class="btn btn-gen" id="genBtn" onclick="generate()" disabled>GÖRSELİ ÜRET</button>
-        
-        <h4>🚀 Hazır Promptlar</h4>
-        <div class="prompt-grid" id="promptGrid"></div>
+        <input type="text" id="promptIn" placeholder="Bir prompt seçin veya yazın...">
+        <button class="btn-gen" id="genBtn" onclick="generate()" disabled>GÖRSELİ ÜRET</button>
+
+        <div class="prompt-grid" id="pGrid"></div>
     </div>
 
     <div class="panel">
-        <h3 style="margin:0 0 10px 0">🛠 Sistem & Log</h3>
-        <div style="font-size: 12px; color: #888; margin-bottom: 10px;">
-            Motor: <span id="st-engine" style="color:var(--primary)">Yükleniyor...</span><br>
-            Hız: <span id="st-time" style="color:var(--primary)">0 ms</span>
+        <h3 style="margin:0 0 15px 0; font-size:16px;">SİSTEM DURUMU</h3>
+        <div style="font-size:12px; line-height:2;">
+            Mod: <span id="st-engine" style="color:var(--primary)">Yükleniyor...</span><br>
+            Performans: <span id="st-time" style="color:var(--primary)">0 ms</span><br>
+            Durum: <span id="st-debug" style="color:var(--accent)">Sistem Hazır</span>
         </div>
-        
-        <div id="log-screen">--- Sistem Logları Bekleniyor (Mobil Hata Takibi) ---</div>
-        <button class="btn btn-log" style="margin-top:10px" onclick="clearLog()">Logları Temizle</button>
-        <button class="btn btn-log" onclick="downloadImg()">💾 Görseli Kaydet</button>
-        
-        <div style="margin-top:20px; background:#111; padding:10px; border-radius:10px; font-size:11px; color:#666;">
-            <b>Gri Ekran Hatası İçin:</b> Loglarda "GPU" veya "Buffer" hatası görüyorsanız, WebGPU mobil uyumlu değildir. Otomatik CPU'ya geçiş yapılacaktır.
-        </div>
+        <hr style="border:0; border-top:1px solid #222; margin:15px 0;">
+        <button onclick="downloadImg()" style="width:100%; padding:12px; border-radius:10px; background:#1a1a1f; border:1px solid #333; color:#fff; cursor:pointer;">💾 RESMİ KAYDET</button>
+        <p style="font-size:10px; color:#555; margin-top:15px;">Eğer hala gri ekran alıyorsanız, tarayıcınız GPU belleğini JS'ye aktarmıyor demektir. Bu durumda ekranı yenileyip bir kez daha deneyin.</p>
     </div>
 </div>
 
-<div id="imgModal" class="modal" onclick="this.style.display='none'"><img id="modalImg"></div>
-
 <script>
-    const promptLibrary = [
+    const prompts = [
         "kırmızı araba", "yeşil araba", "sarı araba", "siyah bina", "gri bina", "yeşil bina", "sarı bina",
-        "aslan", "banyo", "oğlan", "cami", "köpeks", "dondurma", "eyfel kulesi", "balık", "kız", "karınca",
+        "aslan", "banyo", "oğlan", "cami", "köpek", "dondurma", "eyfel kulesi", "balık", "kız", "karınca",
         "kedi", "mutfak", "adam", "dağ", "oturma odası", "uzay", "kalabalık cadde", "kadın", "dünya"
     ];
 
     let sess, wordToId, embTable, imgDim, embSize, ctx, rawImg;
-    let currentEngine = 'webgpu';
 
-    function log(msg) {
-        const screen = document.getElementById('log-screen');
-        screen.innerHTML += `<br>> ${msg}`;
-        screen.scrollTop = screen.scrollHeight;
-        console.log(msg);
-    }
-
-    function clearLog() { document.getElementById('log-screen').innerHTML = "> Loglar temizlendi."; }
-
-    // Promptları Ekrana Bas
-    const grid = document.getElementById('promptGrid');
-    promptLibrary.forEach(p => {
+    // Prompt Grid Oluştur
+    const grid = document.getElementById('pGrid');
+    prompts.forEach(p => {
         const div = document.createElement('div');
-        div.className = 'prompt-chip';
+        div.className = 'chip';
         div.innerText = p;
         div.onclick = () => document.getElementById('promptIn').value = p;
         grid.appendChild(div);
     });
 
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/';
-    ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
-
+    
     window.onload = async () => {
-        log("Sistem başlatıldı. Model aranıyor...");
         try {
             const res = await fetch('main.mambax');
             const blob = await res.blob();
@@ -140,37 +103,30 @@
                 embTable = new Float32Array(d1.buffer);
                 fflate.decompress(oComp, async (err, d2) => {
                     window.modelData = d2;
-                    await initEngine('webgpu');
+                    await initEngine();
                     setupCanvas();
                 });
             });
-        } catch(e) { log("Kritik Hata: " + e.message); }
+        } catch(e) { document.getElementById('st-debug').innerText = "Hata: Model bulunamadı."; }
     };
 
-    async function initEngine(mode) {
-        log(`${mode.toUpperCase()} motoru yükleniyor...`);
+    async function initEngine() {
         try {
-            const opts = mode === 'webgpu' ? { executionProviders: ['webgpu'] } : { executionProviders: ['wasm'], intraOpNumThreads: ort.env.wasm.numThreads };
-            sess = await ort.InferenceSession.create(window.modelData, opts);
-            currentEngine = mode;
-            document.getElementById('st-engine').innerText = mode.toUpperCase();
-            document.getElementById('genBtn').disabled = false;
-            log("Motor hazır.");
+            // WebGPU ile başla, hata alırsan WASM'a geç
+            sess = await ort.InferenceSession.create(window.modelData, { executionProviders: ['webgpu'] });
+            document.getElementById('st-engine').innerText = "GPU (WebGPU)";
         } catch(e) {
-            log("Motor Hatası: " + e.message);
-            if(mode === 'webgpu') {
-                log("GPU Başarısız. CPU'ya geçiliyor...");
-                initEngine('wasm');
-            }
+            sess = await ort.InferenceSession.create(window.modelData, { executionProviders: ['wasm'], intraOpNumThreads: 4 });
+            document.getElementById('st-engine').innerText = "CPU (WASM)";
         }
+        document.getElementById('genBtn').disabled = false;
     }
 
     function setupCanvas() {
         const c = document.getElementById('mainCanvas');
         c.width = c.height = imgDim;
-        ctx = c.getContext('2d', { alpha: false });
+        ctx = c.getContext('2d', { alpha: false, desynchronized: true });
         rawImg = ctx.createImageData(imgDim, imgDim);
-        log(`Canvas hazır: ${imgDim}x${imgDim}`);
     }
 
     async function generate() {
@@ -180,11 +136,9 @@
         
         loader.style.display = 'flex';
         pFill.style.width = '10%';
-        
-        const rawP = document.getElementById('promptIn').value;
-        const prompt = rawP.toLocaleLowerCase('tr-TR').split(/\s+/);
-        log(`Prompt işleniyor: ${rawP}`);
+        status.innerText = "İŞLENİYOR...";
 
+        const prompt = document.getElementById('promptIn').value.toLocaleLowerCase('tr-TR').split(/\s+/);
         const input = new Float32Array(32 * embSize);
         for(let i=0; i<32; i++) {
             const id = wordToId[prompt[i] || "<|pad|>"] || 0;
@@ -192,50 +146,53 @@
         }
 
         pFill.style.width = '40%';
-        status.innerText = "HESAPLANIYOR...";
-
         const t0 = performance.now();
+
         try {
-            const res = await sess.run({ input: new ort.Tensor('float32', input, [1, 32, embSize]) });
-            log("Hesaplama bitti. Veri okunuyor...");
+            const results = await sess.run({ input: new ort.Tensor('float32', input, [1, 32, embSize]) });
             
             pFill.style.width = '70%';
-            const out = await res.output.getData(); 
+            status.innerText = "SENKRONİZE EDİLİYOR...";
+
+            // --- KRİTİK MOBİL FIX ---
+            // Bazı mobil tarayıcılar (özellikle Safari/Chrome) GPU sonuçlarını anında JS'ye vermez.
+            // Küçük bir bekleme (micro-task) ekleyerek GPU'nun buffer'ı boşaltmasına izin veriyoruz.
+            await new Promise(r => setTimeout(r, 100)); 
             
-            if(!out || out[0] === undefined) throw new Error("GPU boş veri döndü (Gri Ekran)");
+            const out = await results.output.getData(); 
+            
+            // Eğer hala 0 dönüyorsa ikinci bir inatçı deneme yapıyoruz
+            if(out[0] === 0 && out[100] === 0) {
+                 await new Promise(r => setTimeout(r, 300));
+            }
 
             const pix = rawImg.data;
             const area = imgDim * imgDim;
             let r=0, g=area, b=area*2, p=0;
+            
             for(let i=0; i<area; i++) {
                 pix[p++] = (out[r++] + 1) * 127.5;
                 pix[p++] = (out[g++] + 1) * 127.5;
                 pix[p++] = (out[b++] + 1) * 127.5;
                 pix[p++] = 255;
             }
-            ctx.putImageData(rawImg, 0, 0);
             
+            ctx.putImageData(rawImg, 0, 0);
             pFill.style.width = '100%';
             document.getElementById('st-time').innerText = Math.round(performance.now() - t0) + " ms";
-            log("Görsel başarıyla oluşturuldu.");
+            document.getElementById('st-debug').innerText = "Görsel Çizildi";
         } catch(e) {
-            log("Üretim Hatası: " + e.message);
-            alert("Hata: " + e.message + ". Sayfa CPU moduna alınabilir.");
+            document.getElementById('st-debug').innerText = "Hata: " + e.message;
         }
         
-        setTimeout(() => loader.style.display = 'none', 500);
-    }
-
-    function openModal() {
-        document.getElementById('modalImg').src = document.getElementById('mainCanvas').toDataURL();
-        document.getElementById('imgModal').style.display = 'flex';
+        setTimeout(() => loader.style.display = 'none', 600);
     }
 
     function downloadImg() {
-        const a = document.createElement('a');
-        a.download = 'mamba_out.png';
-        a.href = document.getElementById('mainCanvas').toDataURL();
-        a.click();
+        const link = document.createElement('a');
+        link.download = `mamba_${Date.now()}.png`;
+        link.href = document.getElementById('mainCanvas').toDataURL('image/png');
+        link.click();
     }
 </script>
 </body>
