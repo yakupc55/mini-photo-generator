@@ -15,137 +15,117 @@
         :root {
             --primary: #00ff88;
             --accent: #00d9ff;
-            --bg: #0b0b0e;
-            --glass: rgba(22, 22, 28, 0.95);
-            --border: rgba(255, 255, 255, 0.12);
-            --text-main: #ffffff;
-            --text-dim: #a0a0a8;
+            --bg: #000000; /* Tam Siyah */
+            --glass: #0a0a0a; /* Çok koyu panel */
+            --border: #333333; /* Belirgin sınır hattı */
+            --text-main: #ffffff; /* Tam Parlak Beyaz */
+            --text-dim: #eeeeee; /* Okunabilir Açık Gri/Beyaz */
         }
 
         html, body { 
             background: var(--bg); color: var(--text-main); 
-            font-family: 'Inter', 'Segoe UI', Roboto, sans-serif; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; touch-action: manipulation;
-            -webkit-font-smoothing: antialiased;
         }
 
         /* Başlangıç Yükleme Ekranı */
         #splash-screen {
-            position: fixed; inset: 0; background: var(--bg);
+            position: fixed; inset: 0; background: #000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             z-index: 5000; transition: opacity 0.5s;
         }
 
         /* TÜM EKRAN KARARMA PANELİ */
         #full-proc-overlay {
-            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.92);
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95);
             display: none; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 4000; backdrop-filter: blur(12px);
+            z-index: 4000; backdrop-filter: blur(5px);
         }
 
         .app-shell {
-            width: 100%; max-width: 1200px; padding: 20px;
-            display: grid; grid-template-columns: 1fr 360px; gap: 24px;
+            width: 100%; max-width: 1100px; padding: 15px;
+            display: grid; grid-template-columns: 1fr 340px; gap: 20px;
             height: 100vh; box-sizing: border-box; align-items: center; margin: auto;
         }
 
         @media (max-width: 900px) { 
-            .app-shell { grid-template-columns: 1fr; overflow-y: auto; display: block; padding-top: 60px; } 
+            .app-shell { grid-template-columns: 1fr; overflow-y: auto; display: block; padding-top: 40px; } 
         }
 
         .glass-card {
-            background: var(--glass); backdrop-filter: blur(30px);
-            border: 1px solid var(--border); border-radius: 28px;
-            padding: 30px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); margin-bottom: 20px;
+            background: var(--glass); 
+            border: 2px solid var(--border); border-radius: 24px;
+            padding: 25px; box-shadow: 0 0 30px rgba(0,255,136,0.05); margin-bottom: 20px;
         }
 
         .canvas-container {
             width: 100%; aspect-ratio: 1/1; background: #000; 
-            border-radius: 20px; overflow: hidden; border: 1px solid #1a1a1e;
-            box-shadow: inset 0 0 20px rgba(0,0,0,1);
+            border-radius: 16px; overflow: hidden; border: 1px solid #444;
         }
 
         canvas { width: 100%; height: 100%; image-rendering: pixelated; }
 
         input {
-            width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border);
-            padding: 20px; border-radius: 16px; color: #fff; font-size: 17px;
-            margin-top: 24px; box-sizing: border-box; outline: none; transition: border 0.3s;
-            font-weight: 400;
+            width: 100%; background: #000; border: 2px solid var(--border);
+            padding: 18px; border-radius: 14px; color: #fff; font-size: 18px;
+            margin-top: 20px; box-sizing: border-box; outline: none;
+            font-weight: 500;
         }
         input:focus { border-color: var(--primary); }
 
         .btn-gen {
-            width: 100%; margin-top: 18px; padding: 22px; border-radius: 16px;
+            width: 100%; margin-top: 15px; padding: 20px; border-radius: 14px;
             border: none; background: var(--primary); color: #000;
-            font-weight: 800; text-transform: uppercase; cursor: pointer; 
-            letter-spacing: 1.5px; font-size: 15px; transition: transform 0.1s, opacity 0.2s;
+            font-weight: 900; text-transform: uppercase; cursor: pointer; letter-spacing: 2px;
+            font-size: 16px;
         }
-        .btn-gen:active { transform: scale(0.98); }
 
-        .btn-gen:disabled { background: #222 !important; color: #555 !important; pointer-events: none !important; }
+        .btn-gen:disabled { background: #1a1a1a !important; color: #444 !important; pointer-events: none !important; }
 
-        .chips { 
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); 
-            gap: 10px; margin-top: 20px; max-height: 150px; overflow-y: auto; padding-right: 5px;
-        }
-        .chips::-webkit-scrollbar { width: 4px; }
-        .chips::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
-
+        .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 15px; max-height: 140px; overflow-y: auto; }
         .chip { 
-            background: rgba(255,255,255,0.05); border: 1px solid var(--border); 
-            padding: 12px 8px; border-radius: 12px; font-size: 13px; color: var(--text-dim); 
-            cursor: pointer; text-align: center; transition: all 0.2s;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            background: #111; border: 1px solid #444; padding: 12px; border-radius: 10px; 
+            font-size: 14px; color: #fff; cursor: pointer; text-align: center; font-weight: 500;
         }
-        .chip:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.3); }
+        .chip:hover { border-color: var(--primary); background: #1a1a1a; }
 
         .stat-card { 
-            background: rgba(0,0,0,0.2); padding: 18px; border-radius: 18px; 
-            margin-bottom: 12px; display: flex; justify-content: space-between; 
-            font-size: 13px; border: 1px solid var(--border); letter-spacing: 0.5px;
+            background: #000; padding: 15px; border-radius: 14px; margin-bottom: 10px; 
+            display: flex; justify-content: space-between; font-size: 14px; border: 2px solid var(--border); 
         }
-        .stat-card span:first-child { color: var(--text-dim); font-weight: 600; }
-        .stat-card span:last-child { color: var(--primary); font-weight: 700; font-family: monospace; font-size: 14px; }
+        .stat-card span { color: #fff; font-weight: 700; }
+        .stat-card span:first-child { color: var(--primary); text-transform: uppercase; font-size: 11px; }
 
-        .loader-bar { width: 220px; height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-top: 20px; overflow: hidden; }
-        .loader-progress { width: 0%; height: 100%; background: var(--primary); box-shadow: 0 0 20px var(--primary); transition: width 0.3s; }
+        .loader-bar { width: 200px; height: 8px; background: #222; border-radius: 10px; margin-top: 20px; overflow: hidden; border: 1px solid #444; }
+        .loader-progress { width: 0%; height: 100%; background: var(--primary); box-shadow: 0 0 15px var(--primary); }
         
-        .save-btn {
-            width: 100%; padding: 16px; border-radius: 14px; background: transparent; 
-            border: 1px solid var(--border); color: var(--text-dim); cursor: pointer; 
-            font-size: 12px; margin-top: 10px; font-weight: 600; transition: all 0.2s;
-            text-transform: uppercase; letter-spacing: 1px;
-        }
-        .save-btn:hover { background: rgba(255,255,255,0.05); color: #fff; border-color: #444; }
+        #perc-txt { color: #fff; font-weight: 900; font-size: 16px; }
     </style>
 </head>
 <body>
 
 <div id="splash-screen">
-    <div style="font-weight: 900; letter-spacing: 10px; color: var(--primary); font-size: 24px; margin-bottom: 5px;">MAMBA</div>
-    <div style="font-size: 12px; color: #555; letter-spacing: 2px; margin-bottom: 20px;">NEURAL ENGINE SYSTEM</div>
+    <div style="font-weight: 900; letter-spacing: 6px; color: var(--primary); font-size: 24px;">MAMBA</div>
     <div class="loader-bar"><div id="splash-bar" class="loader-progress"></div></div>
 </div>
 
 <div id="full-proc-overlay">
-    <div style="letter-spacing: 5px; font-size: 16px; font-weight: 800; color: var(--primary); text-transform: uppercase;">Resim İşleniyor</div>
+    <div style="letter-spacing: 4px; font-size: 18px; font-weight: 900; color: var(--primary);">SİSTEM ÇALIŞIYOR</div>
     <div class="loader-bar"><div id="proc-bar" class="loader-progress"></div></div>
-    <div id="perc-txt" style="font-size: 14px; margin-top: 15px; color: var(--text-dim); font-family: monospace;">0%</div>
+    <div id="perc-txt" style="margin-top: 15px;">%0</div>
 </div>
 
 <div class="app-shell">
     <div class="glass-card">
         <div class="canvas-container"><canvas id="mainCanvas"></canvas></div>
-        <input type="text" id="promptIn" placeholder="Hayalinizdeki temayı yazın..." autocomplete="off">
-        <button id="genBtn" class="btn-gen" onclick="generate()" disabled>Oluşturmayı Başlat</button>
+        <input type="text" id="promptIn" placeholder="Buraya bir tema yazın..." autocomplete="off">
+        <button id="genBtn" class="btn-gen" onclick="generate()" disabled>GÖRSEL OLUŞTUR</button>
         <div class="chips" id="chipGrid"></div>
     </div>
-    <div class="glass-card" style="display: flex; flex-direction: column; justify-content: center;">
-        <div style="font-size: 11px; color: #555; font-weight: 800; margin-bottom: 15px; letter-spacing: 1px; text-transform: uppercase;">Sistem Durumu</div>
-        <div class="stat-card"><span>MOTOR</span><span id="st-engine">HAZIRLANIYOR</span></div>
+    <div class="glass-card">
+        <div class="stat-card"><span>MOTOR</span><span id="st-engine">-</span></div>
         <div class="stat-card"><span>HIZ</span><span id="st-time">0 ms</span></div>
-        <button class="save-btn" onclick="downloadImg()">Görseli Cihaza Kaydet</button>
+        <button onclick="downloadImg()" style="width:100%; padding:14px; border-radius:12px; background:#000; border:2px solid #444; color:#fff; cursor:pointer; font-size:12px; margin-top:10px; font-weight: 800; text-transform: uppercase;">RESMİ KAYDET</button>
     </div>
 </div>
 
@@ -223,7 +203,7 @@
         btn.disabled = true;
         overlay.style.display = 'flex';
         bar.style.width = '5%';
-        perc.innerText = "5%";
+        perc.innerText = "%5";
 
         await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -261,8 +241,8 @@
 
     function downloadImg() {
         const a = document.createElement('a');
-        a.download = 'mamba_output.png';
-        a.href = document.getElementById('mainCanvas').toDataURL('image/png');
+        a.download = 'mamba.png';
+        a.href = document.getElementById('mainCanvas').toDataURL();
         a.click();
     }
 </script>
